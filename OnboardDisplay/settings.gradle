@@ -1,2 +1,2 @@
 include ':app'
-rootProject.name='OnboardDisplay'
+rootProject.name='My Application'

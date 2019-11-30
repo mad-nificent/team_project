@@ -1,4 +1,4 @@
-package com.ashb.onboarddisplay;
+package com.project.ashb.myapplication;
 
 import android.content.Context;
 
@@ -22,6 +22,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertEquals("com.ashb.onboarddisplay", appContext.getPackageName());
+        assertEquals("com.project.ashb.myapplication", appContext.getPackageName());
     }
 }

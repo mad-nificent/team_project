@@ -1,4 +1,4 @@
-package com.ashb.onboarddisplay;
+package com.project.ashb.myapplication;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -111,9 +111,11 @@ public class MainActivity extends AppCompatActivity {
     private ScanCallback le_scan_callback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            list_devices.add("Device Name: " + result.getDevice().getName());
-            devices.add(result.getDevice());
-            adapter.notifyDataSetChanged();
+            if (!list_devices.contains(result.getDevice().getAddress())) {
+                list_devices.add(result.getDevice().getAddress());
+                devices.add(result.getDevice());
+                adapter.notifyDataSetChanged();
+            }
         }
     };
 

@@ -1,4 +1,4 @@
-package com.ashb.onboarddisplay;
+package com.project.ashb.myapplication;
 
 import org.junit.Test;
 
