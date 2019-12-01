@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 
+import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
@@ -16,11 +17,10 @@ import android.util.Log;
 import android.widget.TextView;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
-
-import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
-import static android.bluetooth.BluetoothAdapter.STATE_ON;
 
 public class Display extends AppCompatActivity {
     private static final String TAG = "Display";
@@ -30,8 +30,10 @@ public class Display extends AppCompatActivity {
 
     BluetoothDevice device;
 
-    String SERVICE_UUID = "dee0e505-9680-430e-a4c4-a225905ce33d";
-    String BATTERY_LEVEL_CHARACTERISTIC_UUID = "76a247fb-a76f-42da-91ce-d6a5bdebd0e2";
+    String SERVICE_UUID = "dee0e505-9680-430e-a4c4-a225905ce33d"; // iPad Peripheral
+    //String SERVICE_UUID = "0000180f-0000-1000-8000-00805f9b34fb";   // BLExplorer
+    String BATTERY_LEVEL_CHARACTERISTIC_UUID = "76a247fb-a76f-42da-91ce-d6a5bdebd0e2";  // iPad Peripheral
+    //String BATTERY_LEVEL_CHARACTERISTIC_UUID = "00002a19-0000-1000-8000-00805f9b34fb";  // BLExplorer
 
     Packet packet = new Packet();
 
@@ -44,7 +46,8 @@ public class Display extends AppCompatActivity {
         Intent intent = getIntent();
         device = intent.getExtras().getParcelable("device");
 
-        gatt = device.connectGatt(this, false, gatt_callback);
+        //gatt = device.connectGatt(getApplicationContext(), false, gatt_callback);
+        gatt = device.connectGatt(getApplicationContext(), false, gatt_callback, 2);
 
         textview_battery = (TextView) findViewById(R.id.text_battery);
     }
@@ -54,12 +57,38 @@ public class Display extends AppCompatActivity {
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
 
-            if (newState == STATE_CONNECTED) {
-                boolean state = gatt.discoverServices();
-                Log.d(TAG, "CONNECTED");
-            }
-            else {
-                Log.d(TAG, "NOT CONNECTED");
+            BluetoothDevice bluetoothDevice = gatt.getDevice();
+
+            // if these conditions == true, then we have a disconnect
+            if (status == BluetoothGatt.GATT_FAILURE ||
+                    status != BluetoothGatt.GATT_SUCCESS ||
+                    newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Log.d(TAG, String.format(Locale.getDefault(),
+                        "Disconnected from %s (%s) - status %d - state %d",
+                        bluetoothDevice.getName(),
+                        bluetoothDevice.getAddress(),
+                        status,
+                        newState
+                ));
+
+                gatt.disconnect();
+                // if these conditions == true, then we have a successful connection
+            } else if (newState == BluetoothProfile.STATE_CONNECTED) {
+                Log.d(TAG, String.format(Locale.getDefault(),
+                        "Connected to %s (%s) - status %d - state %d",
+                        bluetoothDevice.getName(),
+                        bluetoothDevice.getAddress(),
+                        status,
+                        newState
+                ));
+                // this sleep is here to avoid TONS of problems in BLE, that occur whenever we start
+                // service discovery immediately after the connection is established
+                try {
+                    Thread.sleep(600);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                gatt.discoverServices();
             }
         }
 
@@ -90,7 +119,7 @@ public class Display extends AppCompatActivity {
             }
             gatt.setCharacteristicNotification(batteryLevel, true);
             BluetoothGattDescriptor desc = batteryLevel.getDescriptor(UUID.fromString(BATTERY_LEVEL_CHARACTERISTIC_UUID));
-            batteryLevel.setValue(desc.ENABLE_NOTIFICATION_VALUE);
+            batteryLevel.setValue(desc.ENABLE_INDICATION_VALUE);
             gatt.readCharacteristic(batteryLevel);
         }
 
@@ -99,8 +128,7 @@ public class Display extends AppCompatActivity {
             super.onCharacteristicRead(gatt, characteristic, status);
             if (characteristic.getUuid().toString().equals(BATTERY_LEVEL_CHARACTERISTIC_UUID)) {
                 try {
-                    byte[] b = characteristic.getValue();
-                    packet.battery_level = new String(b, StandardCharsets.UTF_8);
+                    packet.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
                 } catch (Exception e) {
                     Log.d(TAG, "Error (read)" + e);
                 }

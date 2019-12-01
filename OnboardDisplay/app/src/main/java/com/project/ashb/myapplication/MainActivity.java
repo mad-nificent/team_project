@@ -112,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             if (!list_devices.contains(result.getDevice().getAddress())) {
-                list_devices.add(result.getDevice().getAddress());
+                list_devices.add(result.getDevice().getAddress() + result.getDevice().getName());
                 devices.add(result.getDevice());
                 adapter.notifyDataSetChanged();
             }
