@@ -111,8 +111,8 @@ public class MainActivity extends AppCompatActivity {
     private ScanCallback le_scan_callback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            if (!list_devices.contains(result.getDevice().getAddress())) {
-                list_devices.add(result.getDevice().getAddress() + result.getDevice().getName());
+            if (!devices.contains(result.getDevice())) {
+                list_devices.add("Device Name: " + result.getDevice().getName() + "\nDevice Address: " + result.getDevice().getAddress());
                 devices.add(result.getDevice());
                 adapter.notifyDataSetChanged();
             }
