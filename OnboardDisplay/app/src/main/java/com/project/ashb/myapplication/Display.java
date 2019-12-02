@@ -43,6 +43,7 @@ public class Display extends AppCompatActivity {
 
     Packet packet = new Packet();
     List<BluetoothGattDescriptor> desc = new ArrayList<>();
+    List<BluetoothGattCharacteristic> chars = new ArrayList<>();
     boolean finished = false;
 
     @Override
@@ -136,6 +137,9 @@ public class Display extends AppCompatActivity {
                 Log.e(TAG, "BluetoothGattDescriptor Speed: "+descriptor.getUuid().toString());
             }
 
+            chars.add(batteryLevel);
+            chars.add(speedLevel);
+
             gatt.setCharacteristicNotification(batteryLevel, true);
             gatt.setCharacteristicNotification(speedLevel, true);
 
@@ -151,6 +155,10 @@ public class Display extends AppCompatActivity {
 
         public void setNotifications(int pos) {
             gatt.writeDescriptor(desc.get(pos));
+        }
+
+        public void readChars() {
+            gatt.readCharacteristic(chars.get(chars.size()-1));
         }
 
         @Override
@@ -172,12 +180,18 @@ public class Display extends AppCompatActivity {
                     Log.d(TAG, "Error (read)" + e);
                 }
             }
-
             try {
                 runGUIThread();
             } catch (Exception e) {
                 Log.d(TAG, "Error (read)" + e);
             }
+
+            chars.remove(chars.get(chars.size() - 1));
+
+            if (chars.size() > 0) {
+                readChars();
+            }
+
         }
 
         @Override
@@ -187,6 +201,9 @@ public class Display extends AppCompatActivity {
             if (!finished) {
                 setNotifications(1);
                 finished = true;
+            }
+            if (finished) {
+                readChars();
             }
         }
 
