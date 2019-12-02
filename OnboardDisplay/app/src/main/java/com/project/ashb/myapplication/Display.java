@@ -38,6 +38,7 @@ public class Display extends AppCompatActivity {
     //String SERVICE_UUID = "0000180f-0000-1000-8000-00805f9b34fb";   // BLExplorer
     String BATTERY_LEVEL_CHARACTERISTIC_UUID = "76a247fb-a76f-42da-91ce-d6a5bdebd0e2";  // iPad Peripheral
     String SPEED_LEVEL_CHARACTERISTIC_UUID = "7b9b53ff-5421-4bdf-beb0-ca8c949542c1";  // iPad Peripheral
+    String DESCRIPTOR_UUID = "00002902-0000-1000-8000-00805f9b34fb";
     //String BATTERY_LEVEL_CHARACTERISTIC_UUID = "00002a19-0000-1000-8000-00805f9b34fb";  // BLExplorer
 
     Packet packet = new Packet();
@@ -125,24 +126,42 @@ public class Display extends AppCompatActivity {
                 String charUUID = gattchar.getUuid().toString();
                 Log.d("onCharsDiscovered", "Char uuid " + charUUID);
             }
-            gatt.setCharacteristicNotification(batteryLevel, true);
-            gatt.setCharacteristicNotification(speedLevel, true);
-
-            BluetoothGattDescriptor battery_desc = batteryLevel.getDescriptor(UUID.fromString(BATTERY_LEVEL_CHARACTERISTIC_UUID));
-            BluetoothGattDescriptor speed_desc = speedLevel.getDescriptor(UUID.fromString(SPEED_LEVEL_CHARACTERISTIC_UUID));
-
-            batteryLevel.setValue(battery_desc.ENABLE_NOTIFICATION_VALUE);
-            speedLevel.setValue(speed_desc.ENABLE_NOTIFICATION_VALUE);
 
             chars.add(batteryLevel);
             chars.add(speedLevel);
-
             requestCharacteristics(gatt);
 
+            for (BluetoothGattDescriptor descriptor:batteryLevel.getDescriptors()){
+                Log.e(TAG, "BluetoothGattDescriptor Battery: "+descriptor.getUuid().toString());
+            }
+
+            for (BluetoothGattDescriptor descriptor:speedLevel.getDescriptors()){
+                Log.e(TAG, "BluetoothGattDescriptor Speed: "+descriptor.getUuid().toString());
+            }
+
+            gatt.setCharacteristicNotification(batteryLevel, true);
+            gatt.setCharacteristicNotification(speedLevel, true);
+
+            BluetoothGattDescriptor battery_desc = batteryLevel.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
+            BluetoothGattDescriptor speed_desc = speedLevel.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
+
+            if (battery_desc != null) {
+                battery_desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                Log.d("WriteDesc Battery", "" + gatt.writeDescriptor(battery_desc));
+            }
+            try {
+                Thread.sleep(1000);
+            } catch(Exception e) {
+                Log.d("Error", "" + e);
+            }
+            if (speed_desc != null) {
+                speed_desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                Log.d("WriteDesc Speed", "" + gatt.writeDescriptor(speed_desc));
+            }
         }
 
         public void requestCharacteristics(BluetoothGatt gatt) {
-            gatt.readCharacteristic(chars.get(chars.size()-1));
+            //gatt.readCharacteristic(chars.get(chars.size()-1));
         }
 
         @Override
@@ -179,16 +198,24 @@ public class Display extends AppCompatActivity {
         }
 
         @Override
+        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            super.onDescriptorWrite(gatt, descriptor, status);
+            Log.d(TAG, "onDescriptorWrite :" + ((status == BluetoothGatt.GATT_SUCCESS) ? "Sucess" : "false"));
+        }
+
+        @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             Log.d("onCharacteristicChanged", "Running");
             if (characteristic.getUuid().toString().equals(BATTERY_LEVEL_CHARACTERISTIC_UUID)) {
-
                 packet.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-                try  {
-                    runGUIThread();
-                } catch (Exception e) {
-                    Log.d(TAG, "Error (changed)" + e);
-                }
+            }
+            else if (characteristic.getUuid().toString().equals(SPEED_LEVEL_CHARACTERISTIC_UUID)) {
+                packet.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            }
+            try {
+                runGUIThread();
+            } catch (Exception e) {
+                Log.d(TAG, "Error (read)" + e);
             }
         }
     };
