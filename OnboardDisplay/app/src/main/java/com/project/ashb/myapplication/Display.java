@@ -42,7 +42,8 @@ public class Display extends AppCompatActivity {
     //String BATTERY_LEVEL_CHARACTERISTIC_UUID = "00002a19-0000-1000-8000-00805f9b34fb";  // BLExplorer
 
     Packet packet = new Packet();
-    List<BluetoothGattCharacteristic> chars = new ArrayList<>();
+    List<BluetoothGattDescriptor> desc = new ArrayList<>();
+    boolean finished = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -127,10 +128,6 @@ public class Display extends AppCompatActivity {
                 Log.d("onCharsDiscovered", "Char uuid " + charUUID);
             }
 
-            chars.add(batteryLevel);
-            chars.add(speedLevel);
-            requestCharacteristics(gatt);
-
             for (BluetoothGattDescriptor descriptor:batteryLevel.getDescriptors()){
                 Log.e(TAG, "BluetoothGattDescriptor Battery: "+descriptor.getUuid().toString());
             }
@@ -142,26 +139,18 @@ public class Display extends AppCompatActivity {
             gatt.setCharacteristicNotification(batteryLevel, true);
             gatt.setCharacteristicNotification(speedLevel, true);
 
-            BluetoothGattDescriptor battery_desc = batteryLevel.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
-            BluetoothGattDescriptor speed_desc = speedLevel.getDescriptor(UUID.fromString(DESCRIPTOR_UUID));
+            desc.add(batteryLevel.getDescriptor(UUID.fromString(DESCRIPTOR_UUID)));
+            desc.add(speedLevel.getDescriptor(UUID.fromString(DESCRIPTOR_UUID)));
 
-            if (battery_desc != null) {
-                battery_desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                Log.d("WriteDesc Battery", "" + gatt.writeDescriptor(battery_desc));
-            }
-            try {
-                Thread.sleep(1000);
-            } catch(Exception e) {
-                Log.d("Error", "" + e);
-            }
-            if (speed_desc != null) {
-                speed_desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                Log.d("WriteDesc Speed", "" + gatt.writeDescriptor(speed_desc));
-            }
+            desc.get(0).setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            desc.get(1).setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+
+            setNotifications(0);
+
         }
 
-        public void requestCharacteristics(BluetoothGatt gatt) {
-            //gatt.readCharacteristic(chars.get(chars.size()-1));
+        public void setNotifications(int pos) {
+            gatt.writeDescriptor(desc.get(pos));
         }
 
         @Override
@@ -189,18 +178,16 @@ public class Display extends AppCompatActivity {
             } catch (Exception e) {
                 Log.d(TAG, "Error (read)" + e);
             }
-
-            chars.remove(chars.get(chars.size() - 1));
-            if (chars.size() > 0) {
-                requestCharacteristics(gatt);
-            }
-
         }
 
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             super.onDescriptorWrite(gatt, descriptor, status);
             Log.d(TAG, "onDescriptorWrite :" + ((status == BluetoothGatt.GATT_SUCCESS) ? "Sucess" : "false"));
+            if (!finished) {
+                setNotifications(1);
+                finished = true;
+            }
         }
 
         @Override
