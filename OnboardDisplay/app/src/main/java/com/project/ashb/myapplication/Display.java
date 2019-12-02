@@ -17,15 +17,19 @@ import android.util.Log;
 import android.widget.TextView;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Queue;
 import java.util.UUID;
 
 public class Display extends AppCompatActivity {
     private static final String TAG = "Display";
 
     TextView textview_battery;
+    TextView textview_speed;
     BluetoothGatt gatt;
 
     BluetoothDevice device;
@@ -33,9 +37,11 @@ public class Display extends AppCompatActivity {
     String SERVICE_UUID = "dee0e505-9680-430e-a4c4-a225905ce33d"; // iPad Peripheral
     //String SERVICE_UUID = "0000180f-0000-1000-8000-00805f9b34fb";   // BLExplorer
     String BATTERY_LEVEL_CHARACTERISTIC_UUID = "76a247fb-a76f-42da-91ce-d6a5bdebd0e2";  // iPad Peripheral
+    String SPEED_LEVEL_CHARACTERISTIC_UUID = "7b9b53ff-5421-4bdf-beb0-ca8c949542c1";  // iPad Peripheral
     //String BATTERY_LEVEL_CHARACTERISTIC_UUID = "00002a19-0000-1000-8000-00805f9b34fb";  // BLExplorer
 
     Packet packet = new Packet();
+    List<BluetoothGattCharacteristic> chars = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +56,7 @@ public class Display extends AppCompatActivity {
         gatt = device.connectGatt(getApplicationContext(), false, gatt_callback, 2);
 
         textview_battery = (TextView) findViewById(R.id.text_battery);
+        textview_speed = (TextView) findViewById(R.id.text_speed);
     }
 
     public BluetoothGattCallback gatt_callback = new BluetoothGattCallback() {
@@ -107,10 +114,11 @@ public class Display extends AppCompatActivity {
                 Log.w(TAG, "onServicesDiscovered received: " + status);
             }
 
-            BluetoothGattService battery_service = gatt.getService(UUID.fromString(SERVICE_UUID));
-            BluetoothGattCharacteristic batteryLevel = battery_service.getCharacteristic(UUID.fromString(BATTERY_LEVEL_CHARACTERISTIC_UUID));
+            BluetoothGattService service = gatt.getService(UUID.fromString(SERVICE_UUID));
+            BluetoothGattCharacteristic batteryLevel = service.getCharacteristic(UUID.fromString(BATTERY_LEVEL_CHARACTERISTIC_UUID));
+            BluetoothGattCharacteristic speedLevel = service.getCharacteristic(UUID.fromString(SPEED_LEVEL_CHARACTERISTIC_UUID));
 
-            List<BluetoothGattCharacteristic> gattchars = battery_service.getCharacteristics();
+            List<BluetoothGattCharacteristic> gattchars = service.getCharacteristics();
             Log.d("onCharDiscovered", "Char count: " + gattchars.size());
 
             for (BluetoothGattCharacteristic gattchar : gattchars) {
@@ -118,9 +126,23 @@ public class Display extends AppCompatActivity {
                 Log.d("onCharsDiscovered", "Char uuid " + charUUID);
             }
             gatt.setCharacteristicNotification(batteryLevel, true);
-            BluetoothGattDescriptor desc = batteryLevel.getDescriptor(UUID.fromString(BATTERY_LEVEL_CHARACTERISTIC_UUID));
-            batteryLevel.setValue(desc.ENABLE_INDICATION_VALUE);
-            gatt.readCharacteristic(batteryLevel);
+            gatt.setCharacteristicNotification(speedLevel, true);
+
+            BluetoothGattDescriptor battery_desc = batteryLevel.getDescriptor(UUID.fromString(BATTERY_LEVEL_CHARACTERISTIC_UUID));
+            BluetoothGattDescriptor speed_desc = speedLevel.getDescriptor(UUID.fromString(SPEED_LEVEL_CHARACTERISTIC_UUID));
+
+            batteryLevel.setValue(battery_desc.ENABLE_NOTIFICATION_VALUE);
+            speedLevel.setValue(speed_desc.ENABLE_NOTIFICATION_VALUE);
+
+            chars.add(batteryLevel);
+            chars.add(speedLevel);
+
+            requestCharacteristics(gatt);
+
+        }
+
+        public void requestCharacteristics(BluetoothGatt gatt) {
+            gatt.readCharacteristic(chars.get(chars.size()-1));
         }
 
         @Override
@@ -129,15 +151,31 @@ public class Display extends AppCompatActivity {
             if (characteristic.getUuid().toString().equals(BATTERY_LEVEL_CHARACTERISTIC_UUID)) {
                 try {
                     packet.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-                } catch (Exception e) {
-                    Log.d(TAG, "Error (read)" + e);
-                }
-                try  {
-                    runGUIThread();
+
                 } catch (Exception e) {
                     Log.d(TAG, "Error (read)" + e);
                 }
             }
+            else if (characteristic.getUuid().toString().equals(SPEED_LEVEL_CHARACTERISTIC_UUID)) {
+                try {
+                    packet.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+
+                } catch (Exception e) {
+                    Log.d(TAG, "Error (read)" + e);
+                }
+            }
+
+            try {
+                runGUIThread();
+            } catch (Exception e) {
+                Log.d(TAG, "Error (read)" + e);
+            }
+
+            chars.remove(chars.get(chars.size() - 1));
+            if (chars.size() > 0) {
+                requestCharacteristics(gatt);
+            }
+
         }
 
         @Override
@@ -164,6 +202,7 @@ public class Display extends AppCompatActivity {
                         @Override
                         public void run() {
                             textview_battery.setText(packet.battery_level);
+                            textview_speed.setText(packet.speed_level);
                         }
                     });
                     Thread.sleep(300);

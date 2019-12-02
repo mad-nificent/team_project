@@ -36,6 +36,7 @@
 
 
     <TextView
+        android:id = "@+id/text_speed"
         android:fontFamily="sans-serif-light"
         android:textStyle="bold"
         android:textSize="150sp"
