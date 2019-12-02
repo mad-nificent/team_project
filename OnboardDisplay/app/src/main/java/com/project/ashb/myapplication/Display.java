@@ -17,15 +17,10 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
-import org.w3c.dom.Text;
-
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Queue;
 import java.util.UUID;
 
 public class Display extends AppCompatActivity {
@@ -35,6 +30,7 @@ public class Display extends AppCompatActivity {
     TextView textview_speed;
     TextView textview_indicator_left;
     TextView textview_indicator_right;
+    TextView textView_connected;
     BluetoothGatt gatt;
 
     BluetoothDevice device;
@@ -64,6 +60,7 @@ public class Display extends AppCompatActivity {
         textview_speed = (TextView) findViewById(R.id.text_speed);
         textview_indicator_left = (TextView) findViewById(R.id.text_indicator_left);
         textview_indicator_right = (TextView) findViewById(R.id.text_indicator_right);
+        textView_connected = (TextView) findViewById(R.id.text_connected);
     }
 
     public BluetoothGattCallback gatt_callback = new BluetoothGattCallback() {
@@ -108,6 +105,8 @@ public class Display extends AppCompatActivity {
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             Log.d("BluetoothLeService", "onServicesDiscovered()");
             if (status == BluetoothGatt.GATT_SUCCESS) {
+
+                runGUIThread();
 
                 BluetoothGattService service = gatt.getService(UUID.fromString(SERVICE_UUID));
                 chars.add(service.getCharacteristic(UUID.fromString(BATTERY_LEVEL_CHARACTERISTIC_UUID)));
@@ -182,6 +181,7 @@ public class Display extends AppCompatActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            textView_connected.setText("Connected");
                             textview_battery.setText(packet.battery_level);
                             textview_speed.setText(packet.speed_level);
                             if (packet.indicator.equals("Right")) {
