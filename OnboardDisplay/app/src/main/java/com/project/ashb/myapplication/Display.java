@@ -95,8 +95,6 @@ public class Display extends AppCompatActivity {
                         status,
                         newState
                 ));
-                // this sleep is here to avoid TONS of problems in BLE, that occur whenever we start
-                // service discovery immediately after the connection is established
                 try {
                     Thread.sleep(600);
                 } catch (InterruptedException e) {
@@ -110,22 +108,24 @@ public class Display extends AppCompatActivity {
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             Log.d("BluetoothLeService", "onServicesDiscovered()");
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                List<BluetoothGattService> gattServices = gatt.getServices();
-                Log.d("onServicesDiscovered", "Services count: " + gattServices.size());
 
-                for (BluetoothGattService gattService : gattServices) {
-                    String serviceUUID = gattService.getUuid().toString();
-                    Log.d("onServicesDiscovered", "Service uuid " + serviceUUID);
+                BluetoothGattService service = gatt.getService(UUID.fromString(SERVICE_UUID));
+                chars.add(service.getCharacteristic(UUID.fromString(BATTERY_LEVEL_CHARACTERISTIC_UUID)));
+                chars.add(service.getCharacteristic(UUID.fromString(SPEED_LEVEL_CHARACTERISTIC_UUID)));
+                chars.add(service.getCharacteristic(UUID.fromString(INDICATOR_CHARACTERISTIC_UUID)));
+
+                for(int i = 0; i < chars.size(); i++){
+                    gatt.setCharacteristicNotification(chars.get(i), true);
+                    desc.add(chars.get(i).getDescriptor(UUID.fromString(DESCRIPTOR_UUID)));
                 }
-            } else {
-                Log.w(TAG, "onServicesDiscovered received: " + status);
+
+                for(int i = 0; i < chars.size(); i++) desc.get(i).setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                setNotifications();
             }
+        }
 
+        public void listServiceCharacteristics() {
             BluetoothGattService service = gatt.getService(UUID.fromString(SERVICE_UUID));
-            BluetoothGattCharacteristic batteryLevel = service.getCharacteristic(UUID.fromString(BATTERY_LEVEL_CHARACTERISTIC_UUID));
-            BluetoothGattCharacteristic speedLevel = service.getCharacteristic(UUID.fromString(SPEED_LEVEL_CHARACTERISTIC_UUID));
-            BluetoothGattCharacteristic indicator = service.getCharacteristic(UUID.fromString(INDICATOR_CHARACTERISTIC_UUID));
-
             List<BluetoothGattCharacteristic> gattchars = service.getCharacteristics();
             Log.d("onCharDiscovered", "Char count: " + gattchars.size());
 
@@ -133,33 +133,6 @@ public class Display extends AppCompatActivity {
                 String charUUID = gattchar.getUuid().toString();
                 Log.d("onCharsDiscovered", "Char uuid " + charUUID);
             }
-
-            for (BluetoothGattDescriptor descriptor:batteryLevel.getDescriptors()){
-                Log.e(TAG, "BluetoothGattDescriptor Battery: "+descriptor.getUuid().toString());
-            }
-
-            for (BluetoothGattDescriptor descriptor:speedLevel.getDescriptors()){
-                Log.e(TAG, "BluetoothGattDescriptor Speed: "+descriptor.getUuid().toString());
-            }
-
-            chars.add(batteryLevel);
-            chars.add(speedLevel);
-            chars.add(indicator);
-
-            gatt.setCharacteristicNotification(batteryLevel, true);
-            gatt.setCharacteristicNotification(speedLevel, true);
-            gatt.setCharacteristicNotification(indicator, true);
-
-            desc.add(batteryLevel.getDescriptor(UUID.fromString(DESCRIPTOR_UUID)));
-            desc.add(speedLevel.getDescriptor(UUID.fromString(DESCRIPTOR_UUID)));
-            desc.add(indicator.getDescriptor(UUID.fromString(DESCRIPTOR_UUID)));
-
-            desc.get(0).setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-            desc.get(1).setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-            desc.get(2).setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-
-            setNotifications();
-
         }
 
         public void setNotifications() {
@@ -173,72 +146,32 @@ public class Display extends AppCompatActivity {
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
-            if (characteristic.getUuid().toString().equals(BATTERY_LEVEL_CHARACTERISTIC_UUID)) {
-                try {
-                    packet.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            if (characteristic.getUuid().toString().equals(BATTERY_LEVEL_CHARACTERISTIC_UUID)) packet.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            else if (characteristic.getUuid().toString().equals(SPEED_LEVEL_CHARACTERISTIC_UUID)) packet.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            else if (characteristic.getUuid().toString().equals(INDICATOR_CHARACTERISTIC_UUID)) packet.indicator = new String(characteristic.getValue(), StandardCharsets.UTF_8);
 
-                } catch (Exception e) {
-                    Log.d(TAG, "Error (read)" + e);
-                }
-            }
-            else if (characteristic.getUuid().toString().equals(SPEED_LEVEL_CHARACTERISTIC_UUID)) {
-                try {
-                    packet.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-
-                } catch (Exception e) {
-                    Log.d(TAG, "Error (read)" + e);
-                }
-            }
-            else if (characteristic.getUuid().toString().equals(INDICATOR_CHARACTERISTIC_UUID)){
-                try {
-                    packet.indicator = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-                } catch (Exception e) {
-                    Log.d(TAG, "Error (read)" + e);
-                }
-            }
-            try {
-                runGUIThread();
-            } catch (Exception e) {
-                Log.d(TAG, "Error (read)" + e);
-            }
+            try { runGUIThread(); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
 
             chars.remove(chars.get(chars.size() - 1));
-            if (chars.size() > 0) {
-                readChars();
-            }
+            if (chars.size() > 0) readChars();
 
         }
 
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             super.onDescriptorWrite(gatt, descriptor, status);
-            Log.d(TAG, "onDescriptorWrite :" + ((status == BluetoothGatt.GATT_SUCCESS) ? "Sucess" : "false"));
             desc.remove(desc.get(desc.size() - 1));
-            if (desc.size() > 0) {
-                setNotifications();
-            }
-            else {
-                readChars();
-            }
+            if (desc.size() > 0) setNotifications();
+            else readChars();
         }
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             Log.d("onCharacteristicChanged", "Running");
-            if (characteristic.getUuid().toString().equals(BATTERY_LEVEL_CHARACTERISTIC_UUID)) {
-                packet.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            }
-            else if (characteristic.getUuid().toString().equals(SPEED_LEVEL_CHARACTERISTIC_UUID)) {
-                packet.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            }
-            else if (characteristic.getUuid().toString().equals(INDICATOR_CHARACTERISTIC_UUID)) {
-                packet.indicator = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            }
-            try {
-                runGUIThread();
-            } catch (Exception e) {
-                Log.d(TAG, "Error (read)" + e);
-            }
+            if (characteristic.getUuid().toString().equals(BATTERY_LEVEL_CHARACTERISTIC_UUID)) packet.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            else if (characteristic.getUuid().toString().equals(SPEED_LEVEL_CHARACTERISTIC_UUID)) packet.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            else if (characteristic.getUuid().toString().equals(INDICATOR_CHARACTERISTIC_UUID)) packet.indicator = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            try { runGUIThread(); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
         }
     };
 
@@ -247,7 +180,6 @@ public class Display extends AppCompatActivity {
             public void run() {
                 try {
                     runOnUiThread(new Runnable() {
-
                         @Override
                         public void run() {
                             textview_battery.setText(packet.battery_level);
@@ -267,9 +199,7 @@ public class Display extends AppCompatActivity {
                         }
                     });
                     Thread.sleep(300);
-                } catch (Exception e) {
-                    Log.d(TAG, "Error " + e);
-                }
+                } catch (Exception e) { Log.d(TAG, "Error " + e); }
             }
         }.start();
     }
