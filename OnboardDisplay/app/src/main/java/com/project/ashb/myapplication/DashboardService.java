@@ -25,8 +25,4 @@ public class DashboardService {
             "76a247fb-a76f-42da-91ce-d6a5bdebd0e2",     // battery
             "7b9b53ff-5421-4bdf-beb0-ca8c949542c1",     // speed
             "74df0c8f-f3e1-4cf5-b875-56d7ca609a2e"));   //indicator
-
-
-
-
 }
