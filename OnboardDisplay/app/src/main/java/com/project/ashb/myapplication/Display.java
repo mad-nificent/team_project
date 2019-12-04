@@ -24,89 +24,94 @@ import android.widget.TextView;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 public class Display extends AppCompatActivity {
     private static final String TAG = "Display";
 
+    // attributes to update the GUI
     TextView textview_battery;
     TextView textview_speed;
     ImageView img_indicator_left;
     ImageView img_indicator_right;
     TextView textView_connected;
-    BluetoothGatt gatt;
 
+    // bluetooth attributes
+    BluetoothGatt gatt;
     BluetoothDevice device;
 
-    String SERVICE_UUID = "dee0e505-9680-430e-a4c4-a225905ce33d"; // iPad Peripheral
-    String BATTERY_LEVEL_CHARACTERISTIC_UUID = "76a247fb-a76f-42da-91ce-d6a5bdebd0e2";  // iPad Peripheral
-    String SPEED_LEVEL_CHARACTERISTIC_UUID = "7b9b53ff-5421-4bdf-beb0-ca8c949542c1";  // iPad Peripheral
-    String INDICATOR_CHARACTERISTIC_UUID = "74df0c8f-f3e1-4cf5-b875-56d7ca609a2e";
-    String DESCRIPTOR_UUID = "00002902-0000-1000-8000-00805f9b34fb";
+    // stores the characteristic values
+    DashboardService dashboard_service = new DashboardService();
 
-    Packet packet = new Packet();
-    List<BluetoothGattDescriptor> desc = new ArrayList<>();
-    List<BluetoothGattCharacteristic> chars = new ArrayList<>();
+    // data structures for bluetooth
+    List<BluetoothGattDescriptor> device_descriptors = new ArrayList<>();
+    List<BluetoothGattCharacteristic> device_characteristics = new ArrayList<>();
 
-    Animation animation_right = new AlphaAnimation(1, 0); //to change visibility from visible to invisible
-    Animation animation_left = new AlphaAnimation(1, 0); //to change visibility from visible to invisible
+    // defined animations for the indicators
+    Animation animation_right = new AlphaAnimation(1, 0);
+    Animation animation_left = new AlphaAnimation(1, 0);
+    Animation connected_animation = new AlphaAnimation(1,0);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_display);
+
+        // sets the screen orientation to lock landscape
         this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
+        // gets extra variables passed from MainActivity.java
         Intent intent = getIntent();
         device = intent.getExtras().getParcelable("device");
 
+        // starts the GATT service
         gatt = device.connectGatt(getApplicationContext(), false, gatt_callback, 2);
 
+        // initialises all of the GUI attributes
         textview_battery = (TextView) findViewById(R.id.text_battery);
         textview_speed = (TextView) findViewById(R.id.text_speed);
         img_indicator_left = (ImageView) findViewById(R.id.img_indicator_left);
         img_indicator_right = (ImageView) findViewById(R.id.img_indicator_right);
         textView_connected = (TextView) findViewById(R.id.text_connected);
 
+        // starts the animations for the indicators (initially hidden)
         createIndicatorAnimations();
+
+        connected_animation.setAnimationListener(new Animation.AnimationListener(){
+            @Override
+            public void onAnimationStart(Animation arg0) {
+            }
+            @Override
+            public void onAnimationRepeat(Animation arg0) {
+            }
+            @Override
+            public void onAnimationEnd(Animation arg0) {
+                connected_animation.cancel();
+                textView_connected.setVisibility(View.GONE);
+            }
+        });
 
     }
 
     public BluetoothGattCallback gatt_callback = new BluetoothGattCallback() {
+
+        // when the connection state is changed, this will be called
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
 
-            BluetoothDevice bluetoothDevice = gatt.getDevice();
-
-            // if these conditions == true, then we have a disconnect
-            if (status == BluetoothGatt.GATT_FAILURE ||
-                    status != BluetoothGatt.GATT_SUCCESS ||
-                    newState == BluetoothProfile.STATE_DISCONNECTED) {
-                Log.d(TAG, String.format(Locale.getDefault(),
-                        "Disconnected from %s (%s) - status %d - state %d",
-                        bluetoothDevice.getName(),
-                        bluetoothDevice.getAddress(),
-                        status,
-                        newState
-                ));
-
+            // checks if the bluetooth device has disconnected
+            if (status == BluetoothGatt.GATT_FAILURE || status != BluetoothGatt.GATT_SUCCESS || newState == BluetoothProfile.STATE_DISCONNECTED) {
+                // disconnects the service
                 gatt.disconnect();
-                // if these conditions == true, then we have a successful connection
-            } else if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Log.d(TAG, String.format(Locale.getDefault(),
-                        "Connected to %s (%s) - status %d - state %d",
-                        bluetoothDevice.getName(),
-                        bluetoothDevice.getAddress(),
-                        status,
-                        newState
-                ));
-                try {
-                    Thread.sleep(600);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+            }
+
+            // checks if the device is connected
+            else if (newState == BluetoothProfile.STATE_CONNECTED) {
+                // waits for any running GATT services to finish
+                try { Thread.sleep(600); }
+                catch (InterruptedException e) { e.printStackTrace(); }
+                // attempts to discover services the device is advertising
                 gatt.discoverServices();
             }
         }
@@ -116,25 +121,30 @@ public class Display extends AppCompatActivity {
             Log.d("BluetoothLeService", "onServicesDiscovered()");
             if (status == BluetoothGatt.GATT_SUCCESS) {
 
+                // updates the GUI
                 runGUIThread();
 
-                BluetoothGattService service = gatt.getService(UUID.fromString(SERVICE_UUID));
-                chars.add(service.getCharacteristic(UUID.fromString(BATTERY_LEVEL_CHARACTERISTIC_UUID)));
-                chars.add(service.getCharacteristic(UUID.fromString(SPEED_LEVEL_CHARACTERISTIC_UUID)));
-                chars.add(service.getCharacteristic(UUID.fromString(INDICATOR_CHARACTERISTIC_UUID)));
+                // gets the services and the services characteristics and stores them as attributes
+                BluetoothGattService service = gatt.getService(UUID.fromString(dashboard_service.SERVICE_UUID));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard_service.characteristics_UUIDs.get(dashboard_service.BATTERY_POSITION))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard_service.characteristics_UUIDs.get(dashboard_service.SPEED_POSITION))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard_service.characteristics_UUIDs.get(dashboard_service.INDICATOR_POSITION))));
 
-                for(int i = 0; i < chars.size(); i++){
-                    gatt.setCharacteristicNotification(chars.get(i), true);
-                    desc.add(chars.get(i).getDescriptor(UUID.fromString(DESCRIPTOR_UUID)));
+                // runs through each characteristic and sets a notification and acquires the descriptors for each
+                for(int i = 0; i < device_characteristics.size(); i++){
+                    gatt.setCharacteristicNotification(device_characteristics.get(i), true);
+                    device_descriptors.add(device_characteristics.get(i).getDescriptor(UUID.fromString(dashboard_service.DESCRIPTOR_UUID)));
                 }
 
-                for(int i = 0; i < chars.size(); i++) desc.get(i).setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                // enables notifications for each of the characteristic descriptors
+                for(int i = 0; i < device_descriptors.size(); i++) device_descriptors.get(i).setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
                 setNotifications();
             }
         }
 
+        // method for listing the device characteristics (only used if needed)
         public void listServiceCharacteristics() {
-            BluetoothGattService service = gatt.getService(UUID.fromString(SERVICE_UUID));
+            BluetoothGattService service = gatt.getService(UUID.fromString(dashboard_service.SERVICE_UUID));
             List<BluetoothGattCharacteristic> gattchars = service.getCharacteristics();
             Log.d("onCharDiscovered", "Char count: " + gattchars.size());
 
@@ -144,60 +154,89 @@ public class Display extends AppCompatActivity {
             }
         }
 
+        // writes each descriptor to the gatt service (descriptors removed recursively from onDescriptorWrite())
         public void setNotifications() {
-            gatt.writeDescriptor(desc.get(desc.size()-1));
+            gatt.writeDescriptor(device_descriptors.get(device_descriptors.size()-1));
         }
 
-        public void readChars() {
-            gatt.readCharacteristic(chars.get(chars.size()-1));
+        // reads each characteristic  to to update the GUI with the initial device characteristic values
+        //      (characteristics removed recursively from onCharacteristicRead())
+        public void readCharacteristics() {
+            gatt.readCharacteristic(device_characteristics.get(device_characteristics.size()-1));
         }
 
+        // when a characteristic is successfully initially read, this method will be called
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
-            if (characteristic.getUuid().toString().equals(BATTERY_LEVEL_CHARACTERISTIC_UUID)) packet.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            else if (characteristic.getUuid().toString().equals(SPEED_LEVEL_CHARACTERISTIC_UUID)) packet.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            else if (characteristic.getUuid().toString().equals(INDICATOR_CHARACTERISTIC_UUID)) packet.indicator = new String(characteristic.getValue(), StandardCharsets.UTF_8);
 
+            // checks the characteristic passed in against each of the available characteristics then updates the relevant values
+            if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.BATTERY_POSITION)))
+                dashboard_service.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.SPEED_POSITION)))
+                dashboard_service.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.INDICATOR_POSITION)))
+                dashboard_service.indicator = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+
+            // updates the GUI on the UI thread
             try { runGUIThread(); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
 
-            chars.remove(chars.get(chars.size() - 1));
-            if (chars.size() > 0) readChars();
-
+            // recursively removes each characteristic until all have been read
+            device_characteristics.remove(device_characteristics.get(device_characteristics.size() - 1));
+            if (device_characteristics.size() > 0) readCharacteristics();
         }
 
+        // when a descriptor is successfully written, this method will be called
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             super.onDescriptorWrite(gatt, descriptor, status);
-            desc.remove(desc.get(desc.size() - 1));
-            if (desc.size() > 0) setNotifications();
-            else readChars();
+
+            // recursively removes each descriptor and calls this method when reading
+            device_descriptors.remove(device_descriptors.get(device_descriptors.size() - 1));
+            if (device_descriptors.size() > 0) setNotifications();
+            else readCharacteristics();
         }
 
+        // when a characteristic value has changed on the device, this method will be called
+        //      (called via a notification on each characteristic)
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            Log.d("onCharacteristicChanged", "Running");
-            if (characteristic.getUuid().toString().equals(BATTERY_LEVEL_CHARACTERISTIC_UUID)) packet.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            else if (characteristic.getUuid().toString().equals(SPEED_LEVEL_CHARACTERISTIC_UUID)) packet.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            else if (characteristic.getUuid().toString().equals(INDICATOR_CHARACTERISTIC_UUID)) packet.indicator = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+
+            // checks the characteristic passed in against each of the available characteristics then updates the relevant values
+            if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.BATTERY_POSITION)))
+                dashboard_service.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.SPEED_POSITION)))
+                dashboard_service.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.INDICATOR_POSITION)))
+                dashboard_service.indicator = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+
+            // updates the GUI on the UI thread
             try { runGUIThread(); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
         }
     };
 
+    // this initialises the animations for the indicators on the GUI
     private void createIndicatorAnimations() {
+        // sets the duration
         animation_right.setDuration(1000);
-        animation_right.setInterpolator(new LinearInterpolator());
-        animation_right.setRepeatCount(Animation.INFINITE);
-        animation_right.setRepeatMode(Animation.REVERSE);
-        img_indicator_right.startAnimation(animation_right);
-
         animation_left.setDuration(1000);
+
+        animation_right.setInterpolator(new LinearInterpolator());
         animation_left.setInterpolator(new LinearInterpolator());
+
+        // sets to repeat infinitely
+        animation_right.setRepeatCount(Animation.INFINITE);
         animation_left.setRepeatCount(Animation.INFINITE);
+
+        animation_right.setRepeatMode(Animation.REVERSE);
         animation_left.setRepeatMode(Animation.REVERSE);
+
+        // starts the animation
+        img_indicator_right.startAnimation(animation_right);
         img_indicator_left.startAnimation(animation_left);
     }
 
+    // runs a separate thread from the GattCallback to update the GUI on the UI Thread (used for updating the values throughout)
     private void runGUIThread() {
         new Thread() {
             public void run() {
@@ -205,11 +244,17 @@ public class Display extends AppCompatActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            textView_connected.setText("Connected");
-                            textview_battery.setText(packet.battery_level);
-                            textview_speed.setText(packet.speed_level);
+                            if (!textView_connected.getText().equals("Connected")) {
+                                textView_connected.setText("Connected");
+                                connected_animation.setDuration(3000);
+                                textView_connected.startAnimation(connected_animation);
+                            }
 
-                            if (packet.indicator.equals("Right")) {
+                            textview_battery.setText(dashboard_service.battery_level);
+                            textview_speed.setText(dashboard_service.speed_level);
+
+                            // checks the indicator and starts/stops the relevant animations
+                            if (dashboard_service.indicator.equals("Right")) {
                                 animation_left.cancel();
                                 animation_right.reset();
                                 img_indicator_right.startAnimation(animation_right);
@@ -217,7 +262,7 @@ public class Display extends AppCompatActivity {
                                 img_indicator_right.setVisibility(View.VISIBLE);
                                 img_indicator_left.setVisibility(View.GONE);
                             }
-                            else if (packet.indicator.equals("Left")) {
+                            else if (dashboard_service.indicator.equals("Left")) {
                                 animation_right.cancel();
                                 animation_left.reset();
                                 img_indicator_left.startAnimation(animation_left);
@@ -225,7 +270,7 @@ public class Display extends AppCompatActivity {
                                 img_indicator_left.setVisibility(View.VISIBLE);
                                 img_indicator_right.setVisibility(View.GONE);
                             }
-                            else if (packet.indicator.equals("None")) {
+                            else if (dashboard_service.indicator.equals("None")) {
                                 animation_right.cancel();
                                 animation_left.cancel();
 
