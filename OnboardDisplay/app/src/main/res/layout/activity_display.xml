@@ -111,42 +111,32 @@
         android:textAlignment="center"
         android:textSize="18sp" />
 
-    <TextView
-        android:id="@+id/text_indicator_right"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_columnWeight="1"
+    <ImageView
+        android:id="@+id/img_indicator_right"
+        android:layout_width="116dp"
+        android:layout_height="89dp"
         android:layout_alignParentStart="true"
-
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:layout_gravity="center"
-        android:layout_marginStart="400dp"
-        android:layout_marginTop="330dp"
+        android:layout_marginStart="500dp"
+        android:layout_marginTop="280dp"
         android:layout_marginEnd="30dp"
-        android:fontFamily="sans-serif-light"
-        android:text="RIGHT"
-        android:textAlignment="center"
-        android:textSize="18sp"
-        android:visibility="invisible" />
+        android:src="@drawable/right_indicator"
+        android:animateLayoutChanges="true"
+        android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/text_indicator_left"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_columnWeight="1"
+    <ImageView
+        android:id="@+id/img_indicator_left"
+        android:layout_width="116dp"
+        android:layout_height="89dp"
         android:layout_alignParentStart="true"
-
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:layout_gravity="center"
         android:layout_marginStart="30dp"
-        android:layout_marginTop="330dp"
-        android:layout_marginEnd="400dp"
-        android:fontFamily="sans-serif-light"
-        android:text="RIGHT"
-        android:textAlignment="center"
-        android:textSize="18sp"
-        android:visibility="invisible" />
+        android:layout_marginTop="280dp"
+        android:layout_marginEnd="500dp"
+        android:src="@drawable/left_indicator"
+        android:animateLayoutChanges="true"
+        android:visibility="gone" />
 
 </RelativeLayout>

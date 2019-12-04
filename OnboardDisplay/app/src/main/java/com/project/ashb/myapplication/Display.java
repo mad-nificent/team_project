@@ -15,6 +15,10 @@ import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.LinearInterpolator;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.nio.charset.StandardCharsets;
@@ -28,8 +32,8 @@ public class Display extends AppCompatActivity {
 
     TextView textview_battery;
     TextView textview_speed;
-    TextView textview_indicator_left;
-    TextView textview_indicator_right;
+    ImageView img_indicator_left;
+    ImageView img_indicator_right;
     TextView textView_connected;
     BluetoothGatt gatt;
 
@@ -45,6 +49,9 @@ public class Display extends AppCompatActivity {
     List<BluetoothGattDescriptor> desc = new ArrayList<>();
     List<BluetoothGattCharacteristic> chars = new ArrayList<>();
 
+    Animation animation_right = new AlphaAnimation(1, 0); //to change visibility from visible to invisible
+    Animation animation_left = new AlphaAnimation(1, 0); //to change visibility from visible to invisible
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,9 +65,12 @@ public class Display extends AppCompatActivity {
 
         textview_battery = (TextView) findViewById(R.id.text_battery);
         textview_speed = (TextView) findViewById(R.id.text_speed);
-        textview_indicator_left = (TextView) findViewById(R.id.text_indicator_left);
-        textview_indicator_right = (TextView) findViewById(R.id.text_indicator_right);
+        img_indicator_left = (ImageView) findViewById(R.id.img_indicator_left);
+        img_indicator_right = (ImageView) findViewById(R.id.img_indicator_right);
         textView_connected = (TextView) findViewById(R.id.text_connected);
+
+        createIndicatorAnimations();
+
     }
 
     public BluetoothGattCallback gatt_callback = new BluetoothGattCallback() {
@@ -174,6 +184,20 @@ public class Display extends AppCompatActivity {
         }
     };
 
+    private void createIndicatorAnimations() {
+        animation_right.setDuration(1000);
+        animation_right.setInterpolator(new LinearInterpolator());
+        animation_right.setRepeatCount(Animation.INFINITE);
+        animation_right.setRepeatMode(Animation.REVERSE);
+        img_indicator_right.startAnimation(animation_right);
+
+        animation_left.setDuration(1000);
+        animation_left.setInterpolator(new LinearInterpolator());
+        animation_left.setRepeatCount(Animation.INFINITE);
+        animation_left.setRepeatMode(Animation.REVERSE);
+        img_indicator_left.startAnimation(animation_left);
+    }
+
     private void runGUIThread() {
         new Thread() {
             public void run() {
@@ -184,17 +208,29 @@ public class Display extends AppCompatActivity {
                             textView_connected.setText("Connected");
                             textview_battery.setText(packet.battery_level);
                             textview_speed.setText(packet.speed_level);
+
                             if (packet.indicator.equals("Right")) {
-                                textview_indicator_right.setVisibility(View.VISIBLE);
-                                textview_indicator_left.setVisibility(View.INVISIBLE);
+                                animation_left.cancel();
+                                animation_right.reset();
+                                img_indicator_right.startAnimation(animation_right);
+
+                                img_indicator_right.setVisibility(View.VISIBLE);
+                                img_indicator_left.setVisibility(View.GONE);
                             }
                             else if (packet.indicator.equals("Left")) {
-                                textview_indicator_left.setVisibility(View.VISIBLE);
-                                textview_indicator_right.setVisibility(View.INVISIBLE);
+                                animation_right.cancel();
+                                animation_left.reset();
+                                img_indicator_left.startAnimation(animation_left);
+
+                                img_indicator_left.setVisibility(View.VISIBLE);
+                                img_indicator_right.setVisibility(View.GONE);
                             }
                             else if (packet.indicator.equals("None")) {
-                                textview_indicator_left.setVisibility(View.INVISIBLE);
-                                textview_indicator_right.setVisibility(View.INVISIBLE);
+                                animation_right.cancel();
+                                animation_left.cancel();
+
+                                img_indicator_left.setVisibility(View.GONE);
+                                img_indicator_right.setVisibility(View.GONE);
                             }
                         }
                     });
@@ -203,5 +239,4 @@ public class Display extends AppCompatActivity {
             }
         }.start();
     }
-
 }
