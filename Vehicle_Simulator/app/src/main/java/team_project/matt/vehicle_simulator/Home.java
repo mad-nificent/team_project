@@ -3,6 +3,8 @@ package team_project.matt.vehicle_simulator;
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattServerCallback;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
@@ -10,6 +12,7 @@ import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.ParcelUuid;
 import android.support.v4.app.ActivityCompat;
@@ -19,15 +22,36 @@ import android.view.View;
 import android.widget.Toast;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
+import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTED;
 
 public class Home extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback
 {
-    // identify packets coming from this device
+    enum characteristics { BATTERY, SPEED, INDICATOR };
+    
+    // unique IDs that identify this app's advertisements
+    // --------------------------------------------------------------------
+    // service describes the set of vehicle states to broadcast
     final String SERVICE_UUID = "0000180f-0000-1000-8000-00805f9b34fb";
-
+    
+    // each individual state to broadcast
+    List<String> CHARACTERISTIC_UUIDS = new ArrayList<String>(
+        Collections.unmodifiableList(Arrays.asList
+        (
+                "76a247fb-a76f-42da-91ce-d6a5bdebd0e2",
+                "7b9b53ff-5421-4bdf-beb0-ca8c949542c1",
+                "74df0c8f-f3e1-4cf5-b875-56d7ca609a2e"
+        )));
+    
+    //final String DESCRIPTOR_UUID = "00002902-0000-1000-8000-00805f9b34fb";
+    // --------------------------------------------------------------------
+    
     // location permissions
     Boolean hasLocationPermission = false;
     final int REQUEST_CODE_LOCATION = 1;
@@ -110,9 +134,13 @@ public class Home extends AppCompatActivity implements ActivityCompat.OnRequestP
                 // create a new BLE advertiser and begin advertising
                 BluetoothLeAdvertiser advertiser = adapter.getBluetoothLeAdvertiser();
                 advertiser.startAdvertising(settings, data, advertiseCallback);
-    
-                //BluetoothManager bluetoothManager = (BluetoothManager) this.getSystemService(BLUETOOTH_SERVICE);
-                //BluetoothGattServer server = bluetoothManager.openGattServer(this, gattServerCallback);
+                
+                BluetoothManager bluetoothManager = (BluetoothManager) getApplicationContext().getSystemService(BLUETOOTH_SERVICE);
+                BluetoothGattServer server = bluetoothManager.openGattServer(this, gattServerCallback);
+                
+                // work on creating service and service callback
+                // then add service
+                //server.addService()
             }
         }
     }
@@ -150,12 +178,33 @@ public class Home extends AppCompatActivity implements ActivityCompat.OnRequestP
                 Toast toast = Toast.makeText(getApplicationContext(), device.getName().toString() + " has connected", Toast.LENGTH_SHORT);
                 toast.show();
             }
+            
+            else if (newState == STATE_DISCONNECTED)
+            {
+                Toast toast = Toast.makeText(getApplicationContext(), device.getName().toString() + " has disconnected", Toast.LENGTH_SHORT);
+                toast.show();
+            }
         }
 
         @Override
         public void onServiceAdded(int status, BluetoothGattService service)
         {
 
+        }
+    
+        @Override
+        public void onCharacteristicReadRequest(BluetoothDevice device, int requestId,
+            int offset, BluetoothGattCharacteristic characteristic)
+        {
+            super.onCharacteristicReadRequest(device, requestId, offset, characteristic);
+        }
+    
+        @Override
+        public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId,
+             BluetoothGattCharacteristic characteristic, boolean preparedWrite,
+             boolean responseNeeded, int offset, byte[] value)
+        {
+            super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
         }
     };
 }
