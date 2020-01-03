@@ -7,19 +7,60 @@
     tools:context=".Home">
 
     <TableRow>
+
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+
             android:text="Start Server"
             android:onClick="onStartServerClick"/>
+
     </TableRow>
 
-    <TableRow>
+    <TableRow android:gravity="center">
+
+        <EditText
+            android:id="@+id/txtBattery"
+            android:layout_width="150dp"
+            android:textAlignment="center"
+
+            android:hint="Battery Level (%)"
+            android:inputType="number"
+            android:maxLength="3"/>
+
+        <EditText
+            android:id="@+id/txtSpeed"
+            android:layout_width="150dp"
+            android:textAlignment="center"
+
+            android:hint="Speed (mph)"
+            android:inputType="number"
+            android:maxLength="3" />
+    </TableRow>
+
+    <TableRow android:gravity="center">
+
         <Button
+            android:id="@+id/btnUpdate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+
+            android:enabled="false"
             android:text="Update"
             android:onClick="onUpdateClick"/>
+
+    </TableRow>
+
+    <TableRow android:gravity="center">
+
+        <Button
+            android:text="Left"
+            android:onClick="onLeftClick"/>
+
+        <Button
+            android:text="Right"
+            android:onClick="onRightClick"/>
+
     </TableRow>
 
 </TableLayout>
