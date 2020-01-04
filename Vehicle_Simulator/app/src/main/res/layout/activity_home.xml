@@ -54,10 +54,14 @@
     <TableRow android:gravity="center">
 
         <Button
+            android:id="@+id/btnLeft"
+            android:enabled="false"
             android:text="Left"
             android:onClick="onLeftClick"/>
 
         <Button
+            android:id="@+id/btnRight"
+            android:enabled="false"
             android:text="Right"
             android:onClick="onRightClick"/>
 

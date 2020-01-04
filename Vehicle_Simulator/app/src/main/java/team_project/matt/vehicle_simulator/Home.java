@@ -1,5 +1,6 @@
 package team_project.matt.vehicle_simulator;
 
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -8,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.view.View;
+import android.widget.Toast;
 
 public class Home
         extends AppCompatActivity
@@ -58,7 +60,10 @@ public class Home
                 
                 else
                 {
-                    // disable app
+                    Toast toast = Toast.makeText(this, "App requires location permissions to function. Closing down.", Toast.LENGTH_LONG);
+                    toast.show();
+                    
+                    finish();
                 }
             }
         }
@@ -72,22 +77,47 @@ public class Home
             bluetoothLE.startAdvertising();
             
             Button btnUpdate = findViewById(R.id.btnUpdate);
+            Button btnLeft   = findViewById(R.id.btnLeft);
+            Button btnRight  = findViewById(R.id.btnRight);
+            
             btnUpdate.setEnabled(true);
+            btnLeft.setEnabled(true);
+            btnRight.setEnabled(true);
         }
     }
     
     // turn on left indicator
     public void onLeftClick(View view)
     {
-        BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.INDICATOR_INDEX).setValue(BluetoothLE.Characteristics.INDICATOR_LEFT);
-        bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.GATTServer.getConnectedDevices().get(0), BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.INDICATOR_INDEX), false);
+        BluetoothGattCharacteristic indicator = BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.INDICATOR_INDEX);
+        
+        // toggle off
+        if (indicator.getStringValue(0).equals(BluetoothLE.Characteristics.INDICATOR_LEFT))
+            indicator.setValue(BluetoothLE.Characteristics.INDICATOR_NONE);
+        
+        // toggle on
+        else indicator.setValue(BluetoothLE.Characteristics.INDICATOR_LEFT);
+        
+        // notify all devices of change
+        for (int i = 0; i < bluetoothLE.devices.size(); ++i)
+            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), indicator, false);
     }
     
     // turn on right indicator
     public void onRightClick(View view)
     {
-        BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.INDICATOR_INDEX).setValue(BluetoothLE.Characteristics.INDICATOR_RIGHT);
-        bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.GATTServer.getConnectedDevices().get(0), BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.INDICATOR_INDEX), false);
+        BluetoothGattCharacteristic indicator = BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.INDICATOR_INDEX);
+    
+        // toggle off
+        if (indicator.getStringValue(0).equals(BluetoothLE.Characteristics.INDICATOR_RIGHT))
+            indicator.setValue(BluetoothLE.Characteristics.INDICATOR_NONE);
+        
+        // toggle on
+        else indicator.setValue(BluetoothLE.Characteristics.INDICATOR_RIGHT);
+    
+        // notify all devices of change
+        for (int i = 0; i < bluetoothLE.devices.size(); ++i)
+            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), indicator, false);
     }
     
     // update all modified characteristics and send out a notification
@@ -100,8 +130,10 @@ public class Home
         BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.BATTERY_INDEX).setValue(batteryLevel.getText().toString());
         BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.SPEED_INDEX).setValue(speed.getText().toString());
     
-        // notify changes - not complete, must register all devices
-        bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.GATTServer.getConnectedDevices().get(0), BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.BATTERY_INDEX), false);
-        bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.GATTServer.getConnectedDevices().get(0), BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.SPEED_INDEX), false);
+        for (int i = 0; i < bluetoothLE.devices.size(); ++i)
+        {
+            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.BATTERY_INDEX), false);
+            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.SPEED_INDEX), false);
+        }
     }
 }
