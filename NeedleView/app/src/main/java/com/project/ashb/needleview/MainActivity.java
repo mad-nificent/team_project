@@ -7,12 +7,14 @@ import android.graphics.Rect;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.RotateAnimation;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.os.Bundle;
 
 public class MainActivity extends AppCompatActivity {
 
     ImageView iv;
+    EditText et;
     int bottom_iv;
     int right_iv;
 
@@ -24,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
          iv = (ImageView)findViewById(R.id.needle);
+         et = (EditText)findViewById(R.id.edit);
 
 
          Rect rect = new Rect();
@@ -39,25 +42,9 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void onClick180(View view) {
-        RotateAnimation rotateAnimation = new RotateAnimation(current_pos, 315, bottom_iv, right_iv);
-        current_pos = 315;
-        rotateAnimation.setFillAfter(true);
-        rotateAnimation.setDuration(2000);
-        iv.startAnimation(rotateAnimation);
-    }
-
-    public void onClick90(View view) {
-        RotateAnimation rotateAnimation = new RotateAnimation(current_pos, 225, bottom_iv, right_iv);
-        current_pos = 225;
-        rotateAnimation.setFillAfter(true);
-        rotateAnimation.setDuration(2000);
-        iv.startAnimation(rotateAnimation);
-    }
-
-    public void onClick0(View view) {
-        RotateAnimation rotateAnimation = new RotateAnimation(current_pos, 135, bottom_iv, right_iv);
-        current_pos = 135;
+    public void onClickbtnSet(View view) {
+        RotateAnimation rotateAnimation = new RotateAnimation(current_pos, 135 + Integer.parseInt(et.getText().toString()), bottom_iv, right_iv);
+        current_pos = 135 + Integer.parseInt(et.getText().toString());
         rotateAnimation.setFillAfter(true);
         rotateAnimation.setDuration(2000);
         iv.startAnimation(rotateAnimation);
