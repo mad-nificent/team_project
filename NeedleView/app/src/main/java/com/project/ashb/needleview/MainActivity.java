@@ -18,7 +18,7 @@ public class MainActivity extends AppCompatActivity {
     int bottom_iv;
     int right_iv;
 
-    int current_pos = 135;
+    float current_pos = 105;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,8 +43,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onClickbtnSet(View view) {
-        RotateAnimation rotateAnimation = new RotateAnimation(current_pos, 135 + Integer.parseInt(et.getText().toString()), bottom_iv, right_iv);
-        current_pos = 135 + Integer.parseInt(et.getText().toString());
+        RotateAnimation rotateAnimation = new RotateAnimation(current_pos, 105 + Integer.parseInt(et.getText().toString()) * 2.0f, bottom_iv, right_iv);
+        current_pos = 105 + Integer.parseInt(et.getText().toString()) * 2.0f;
         rotateAnimation.setFillAfter(true);
         rotateAnimation.setDuration(2000);
         iv.startAnimation(rotateAnimation);

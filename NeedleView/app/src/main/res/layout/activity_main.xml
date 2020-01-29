@@ -6,31 +6,30 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+
     <ImageView
         android:id="@+id/gauge"
         android:layout_width="300dp"
         android:layout_height="300dp"
-        android:src="@drawable/gauge"
+        android:src="@drawable/gauge_new"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.351"
+        app:layout_constraintHorizontal_bias="0.380"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.266" />
+        app:layout_constraintVertical_bias="0.255" />
 
     <ImageView
         android:id="@+id/needle"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
+        android:layout_width="90dp"
+        android:layout_height="90dp"
         android:src="@drawable/needle"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.601"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.518" />
-
-
+        app:layout_constraintBottom_toBottomOf="@+id/gauge"
+        app:layout_constraintEnd_toEndOf="@+id/gauge"
+        app:layout_constraintHorizontal_bias="0.7"
+        app:layout_constraintStart_toStartOf="@+id/gauge"
+        app:layout_constraintTop_toTopOf="@+id/gauge"
+        app:layout_constraintVertical_bias="0.89" />
 
     <EditText
         android:id="@+id/edit"
