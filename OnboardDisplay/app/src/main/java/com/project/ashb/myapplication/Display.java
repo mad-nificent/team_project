@@ -12,12 +12,14 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
+import android.view.animation.RotateAnimation;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -31,10 +33,11 @@ public class Display extends AppCompatActivity {
 
     // attributes to update the GUI
     TextView textview_battery;
-    TextView textview_speed;
     ImageView img_indicator_left;
     ImageView img_indicator_right;
     TextView textView_connected;
+    ImageView iv_needle;
+    ImageView iv_gauge;
 
     // bluetooth attributes
     BluetoothGatt gatt;
@@ -51,6 +54,12 @@ public class Display extends AppCompatActivity {
     Animation animation_right = new AlphaAnimation(1, 0);
     Animation animation_left = new AlphaAnimation(1, 0);
     Animation connected_animation = new AlphaAnimation(1,0);
+
+    int bottom_iv;
+    int right_iv;
+
+    float current_pos;
+    final float starting_pos = 105;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,10 +78,23 @@ public class Display extends AppCompatActivity {
 
         // initialises all of the GUI attributes
         textview_battery = (TextView) findViewById(R.id.text_battery);
-        textview_speed = (TextView) findViewById(R.id.text_speed);
         img_indicator_left = (ImageView) findViewById(R.id.img_indicator_left);
         img_indicator_right = (ImageView) findViewById(R.id.img_indicator_right);
         textView_connected = (TextView) findViewById(R.id.text_connected);
+        iv_gauge = (ImageView) findViewById(R.id.gauge);
+        iv_needle = (ImageView) findViewById(R.id.needle);
+
+        current_pos = starting_pos;
+
+        Rect rect = new Rect();
+        iv_needle.getLocalVisibleRect(rect);
+        bottom_iv = rect.bottom;
+        right_iv = rect.right;
+
+        RotateAnimation rotateAnimation = new RotateAnimation(0, current_pos, bottom_iv, right_iv);
+        rotateAnimation.setFillAfter(true);
+        rotateAnimation.setDuration(500);
+        iv_needle.startAnimation(rotateAnimation);
 
         // starts the animations for the indicators (initially hidden)
         createIndicatorAnimations();
@@ -251,7 +273,7 @@ public class Display extends AppCompatActivity {
                             }
 
                             textview_battery.setText(dashboard_service.battery_level);
-                            textview_speed.setText(dashboard_service.speed_level);
+                            //textview_speed.setText(dashboard_service.speed_level);
 
                             // checks the indicator and starts/stops the relevant animations
                             if (dashboard_service.indicator.equals("Right")) {
@@ -277,6 +299,29 @@ public class Display extends AppCompatActivity {
                                 img_indicator_left.setVisibility(View.GONE);
                                 img_indicator_right.setVisibility(View.GONE);
                             }
+
+                            RotateAnimation rotateAnimation = new RotateAnimation(current_pos, starting_pos + Integer.parseInt(dashboard_service.speed_level) * 2.0f, bottom_iv, right_iv);
+                            rotateAnimation.setFillAfter(true);
+                            rotateAnimation.setDuration(2000);
+                            iv_needle.startAnimation(rotateAnimation);
+                            rotateAnimation.setAnimationListener(new Animation.AnimationListener() {
+                                @Override
+                                public void onAnimationStart(Animation animation) {
+
+                                }
+
+                                @Override
+                                public void onAnimationEnd(Animation arg0) {
+                                    current_pos = starting_pos + Integer.parseInt(dashboard_service.speed_level) * 2.0f;
+                                }
+
+                                @Override
+                                public void onAnimationRepeat(Animation animation) {
+
+                                }
+                            });
+
+
                         }
                     });
                     Thread.sleep(300);

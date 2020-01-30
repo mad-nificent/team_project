@@ -33,30 +33,9 @@
         android:fontFamily="sans-serif-light"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:text="Start Scanning"
+        android:text="Connect to Nearby Device"
         android:id="@+id/btn_start_scanning"
         android:layout_marginTop="100dp"
         android:textColor="#666666"/>
-
-    <Button
-        android:fontFamily="sans-serif-light"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:text="Stop Scanning"
-        android:id="@+id/btn_stop_scanning"
-        android:layout_marginTop="100dp"
-        android:textColor="#666666"/>
-
-    <ListView
-        android:fontFamily="sans-serif-light"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="180dp"
-        android:id="@+id/listview_peripheral"
-        android:scrollbars="vertical"
-        android:maxLines="30"
-        android:textColor="#666666"
-        android:foregroundGravity="">
-    </ListView>
 
 </RelativeLayout>

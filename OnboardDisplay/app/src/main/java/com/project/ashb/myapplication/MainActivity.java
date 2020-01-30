@@ -9,13 +9,17 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.ParcelUuid;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -24,6 +28,8 @@ import android.widget.Button;
 import android.widget.ListView;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -34,9 +40,10 @@ public class MainActivity extends AppCompatActivity {
     BluetoothAdapter bluetooth_adapter;
     BluetoothLeScanner bluetooth_scanner;
 
+    DashboardService dashboard_service = new DashboardService();
+
     // view objects
     Button btn_start_scanning;
-    Button btn_stop_scanning;
     ListView listview_peripheral;
 
     // constants
@@ -44,28 +51,18 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
 
     // devices
-    ArrayList<String> list_devices = new ArrayList<String>();
     ArrayList<BluetoothDevice> devices = new ArrayList<BluetoothDevice>();
-    ArrayAdapter<String> adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
-        // initalises the view objects
-        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, list_devices);
-        listview_peripheral = (ListView) findViewById(R.id.listview_peripheral);
-        listview_peripheral.setAdapter(adapter);
+        bluetooth_manager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
+        bluetooth_adapter = bluetooth_manager.getAdapter();
+        bluetooth_adapter.setName("Display");
 
-        listview_peripheral.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Intent intent = new Intent(getApplicationContext(), Display.class);
-                intent.putExtra("device", devices.get(position));
-                startActivity(intent);
-            }
-        });
 
         btn_start_scanning = (Button) findViewById(R.id.btn_start_scanning);
         btn_start_scanning.setOnClickListener(new View.OnClickListener() {
@@ -74,16 +71,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        btn_stop_scanning = (Button) findViewById(R.id.btn_stop_scanning);
-        btn_stop_scanning.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                stopScanning();
-            }
-        });
-        btn_stop_scanning.setVisibility(View.INVISIBLE);
-
-        bluetooth_manager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
-        bluetooth_adapter = bluetooth_manager.getAdapter();
         bluetooth_scanner = bluetooth_adapter.getBluetoothLeScanner();
 
         // checks if the bluetooth on the device is enabled
@@ -112,9 +99,11 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             if (!devices.contains(result.getDevice())) {
-                list_devices.add("Device Name: " + result.getDevice().getName() + "\nDevice Address: " + result.getDevice().toString() + "\nStrength: " + result.getRssi());
-                devices.add(result.getDevice());
-                adapter.notifyDataSetChanged();
+                btn_start_scanning.setText("Connection Found: Connecting to " + result.getDevice().getName());
+                stopScanning();
+                Intent intent = new Intent(getApplicationContext(), Display.class);
+                intent.putExtra("device", result.getDevice());
+                startActivity(intent);
             }
         }
     };
@@ -145,25 +134,24 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startScanning() {
+        btn_start_scanning.setText("Attempting Connection...");
+        btn_start_scanning.setEnabled(false);
         System.out.println("start scanning");
-        list_devices.clear();
         devices.clear();
-        adapter.notifyDataSetChanged();
-
-        btn_start_scanning.setVisibility(View.INVISIBLE);
-        btn_stop_scanning.setVisibility(View.VISIBLE);
         AsyncTask.execute(new Runnable() {
             @Override
             public void run() {
-                bluetooth_scanner.startScan(le_scan_callback);
+                ScanFilter filter = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(dashboard_service.SERVICE_UUID)).build();
+                List<ScanFilter> filters = new ArrayList<>();
+                filters.add(filter);
+                ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+                bluetooth_scanner.startScan(filters, settings, le_scan_callback);
             }
         });
     }
 
     public void stopScanning() {
         System.out.println("stopping scanning");
-        btn_start_scanning.setVisibility(View.VISIBLE);
-        btn_stop_scanning.setVisibility(View.INVISIBLE);
         AsyncTask.execute(new Runnable() {
             @Override
             public void run() {

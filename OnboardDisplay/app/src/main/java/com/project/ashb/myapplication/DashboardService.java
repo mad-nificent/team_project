@@ -14,7 +14,6 @@ public class DashboardService {
     // UUID's
     String SERVICE_UUID = "dee0e505-9680-430e-a4c4-a225905ce33d"; // unique service ID
     String DESCRIPTOR_UUID = "00002902-0000-1000-8000-00805f9b34fb";    // descriptor ID
-
     // positions in characteristics list
     final int BATTERY_POSITION = 0;
     final int SPEED_POSITION = 1;
