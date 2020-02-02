@@ -32,12 +32,14 @@ public class Display extends AppCompatActivity {
     private static final String TAG = "Display";
 
     // attributes to update the GUI
-    TextView textview_battery;
     ImageView img_indicator_left;
     ImageView img_indicator_right;
     TextView textView_connected;
+
     ImageView iv_needle;
     ImageView iv_gauge;
+    ImageView iv_gaugeBattery;
+    ImageView iv_needleBattery;
 
     // bluetooth attributes
     BluetoothGatt gatt;
@@ -57,9 +59,13 @@ public class Display extends AppCompatActivity {
 
     int bottom_iv;
     int right_iv;
+    int bottom_iv_battery;
+    int right_iv_battery;
 
     float current_pos;
     final float starting_pos = 105;
+    float current_pos_battery;
+    final float starting_pos_battery = 125;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,14 +83,16 @@ public class Display extends AppCompatActivity {
         gatt = device.connectGatt(getApplicationContext(), false, gatt_callback, 2);
 
         // initialises all of the GUI attributes
-        textview_battery = (TextView) findViewById(R.id.text_battery);
         img_indicator_left = (ImageView) findViewById(R.id.img_indicator_left);
         img_indicator_right = (ImageView) findViewById(R.id.img_indicator_right);
         textView_connected = (TextView) findViewById(R.id.text_connected);
         iv_gauge = (ImageView) findViewById(R.id.gauge);
         iv_needle = (ImageView) findViewById(R.id.needle);
+        iv_gaugeBattery = (ImageView) findViewById(R.id.gaugeBattery);
+        iv_needleBattery = (ImageView) findViewById(R.id.needleBattery);
 
         current_pos = starting_pos;
+        current_pos_battery = starting_pos_battery;
 
         Rect rect = new Rect();
         iv_needle.getLocalVisibleRect(rect);
@@ -95,6 +103,11 @@ public class Display extends AppCompatActivity {
         rotateAnimation.setFillAfter(true);
         rotateAnimation.setDuration(500);
         iv_needle.startAnimation(rotateAnimation);
+
+        iv_needleBattery.getLocalVisibleRect(rect);
+        bottom_iv_battery = rect.bottom;
+        right_iv_battery = rect.right;
+
 
         // starts the animations for the indicators (initially hidden)
         createIndicatorAnimations();
@@ -272,7 +285,7 @@ public class Display extends AppCompatActivity {
                                 textView_connected.startAnimation(connected_animation);
                             }
 
-                            textview_battery.setText(dashboard_service.battery_level);
+                            //textview_battery.setText(dashboard_service.battery_level);
                             //textview_speed.setText(dashboard_service.speed_level);
 
                             // checks the indicator and starts/stops the relevant animations
@@ -321,6 +334,26 @@ public class Display extends AppCompatActivity {
                                 }
                             });
 
+                            RotateAnimation rotateAnimation_battery = new RotateAnimation(current_pos_battery, starting_pos_battery + Integer.parseInt(dashboard_service.battery_level) * 2.0f, bottom_iv, right_iv);
+                            rotateAnimation_battery.setFillAfter(true);
+                            rotateAnimation_battery.setDuration(2000);
+                            iv_needleBattery.startAnimation(rotateAnimation_battery);
+                            rotateAnimation_battery.setAnimationListener(new Animation.AnimationListener() {
+                                @Override
+                                public void onAnimationStart(Animation animation) {
+
+                                }
+
+                                @Override
+                                public void onAnimationEnd(Animation arg0) {
+                                    current_pos_battery = starting_pos_battery + Integer.parseInt(dashboard_service.battery_level) * 2.0f;
+                                }
+
+                                @Override
+                                public void onAnimationRepeat(Animation animation) {
+
+                                }
+                            });
 
                         }
                     });
