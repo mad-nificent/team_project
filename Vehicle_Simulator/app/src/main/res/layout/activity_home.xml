@@ -41,6 +41,22 @@
     <TableRow android:gravity="center">
 
         <Button
+            android:id="@+id/btnMinus"
+            android:enabled="false"
+            android:text="-"
+            android:onClick="onMinusClick"/>
+
+        <Button
+            android:id="@+id/btnPlus"
+            android:enabled="false"
+            android:text="+"
+            android:onClick="onPlusClick"/>
+
+    </TableRow>
+
+    <TableRow android:gravity="center">
+
+        <Button
             android:id="@+id/btnUpdate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -74,22 +74,65 @@ public class Home
     {
         if (hasLocationPermission)
         {
-            bluetoothLE.startAdvertising();
-            
-            Button btnUpdate = findViewById(R.id.btnUpdate);
-            Button btnLeft   = findViewById(R.id.btnLeft);
-            Button btnRight  = findViewById(R.id.btnRight);
-            
-            btnUpdate.setEnabled(true);
-            btnLeft.setEnabled(true);
-            btnRight.setEnabled(true);
+            if (bluetoothLE.startAdvertising())
+            {
+                Button btnPlus = findViewById(R.id.btnPlus);
+                Button btnMinus = findViewById(R.id.btnMinus);
+                Button btnUpdate = findViewById(R.id.btnUpdate);
+                Button btnLeft = findViewById(R.id.btnLeft);
+                Button btnRight = findViewById(R.id.btnRight);
+    
+                btnPlus.setEnabled(true);
+                btnMinus.setEnabled(true);
+                btnUpdate.setEnabled(true);
+                btnLeft.setEnabled(true);
+                btnRight.setEnabled(true);
+            }
+        }
+    }
+    
+    public void onMinusClick(View view)
+    {
+        EditText batteryLevel = findViewById(R.id.txtBattery);
+        EditText speed        = findViewById(R.id.txtSpeed);
+    
+        batteryLevel.setText(BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).getStringValue(0));
+        speed.setText(BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).getStringValue(0));
+    
+        // update values
+        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).setValue(Integer.toString(Integer.parseInt(batteryLevel.getText().toString()) - 1));
+        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).setValue(Integer.toString(Integer.parseInt(speed.getText().toString()) - 1));
+    
+        for (int i = 0; i < bluetoothLE.devices.size(); ++i)
+        {
+            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY), false);
+            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED), false);
+        }
+    }
+    
+    public void onPlusClick(View view)
+    {
+        EditText batteryLevel = findViewById(R.id.txtBattery);
+        EditText speed        = findViewById(R.id.txtSpeed);
+        
+        batteryLevel.setText(BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).getStringValue(0));
+        speed.setText(BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).getStringValue(0));
+    
+        // update values
+        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).setValue(Integer.toString(Integer.parseInt(batteryLevel.getText().toString()) + 1));
+        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).setValue(Integer.toString(Integer.parseInt(speed.getText().toString()) + 1));
+    
+        for (int i = 0; i < bluetoothLE.devices.size(); ++i)
+        {
+            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY), false);
+            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED), false);
         }
     }
     
     // turn on left indicator
     public void onLeftClick(View view)
     {
-        BluetoothGattCharacteristic indicator = BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.INDICATOR_INDEX);
+        BluetoothGattCharacteristic indicator = BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.INDICATOR);
         
         // toggle off
         if (indicator.getStringValue(0).equals(BluetoothLE.Characteristics.INDICATOR_LEFT))
@@ -106,7 +149,7 @@ public class Home
     // turn on right indicator
     public void onRightClick(View view)
     {
-        BluetoothGattCharacteristic indicator = BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.INDICATOR_INDEX);
+        BluetoothGattCharacteristic indicator = BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.INDICATOR);
     
         // toggle off
         if (indicator.getStringValue(0).equals(BluetoothLE.Characteristics.INDICATOR_RIGHT))
@@ -120,20 +163,36 @@ public class Home
             bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), indicator, false);
     }
     
-    // update all modified characteristics and send out a notification
+    // update all modified data and send out a notification
     public void onUpdateClick(View view)
     {
         EditText batteryLevel = findViewById(R.id.txtBattery);
         EditText speed        = findViewById(R.id.txtSpeed);
-    
+
+        // dont send blank string
+        if (batteryLevel.getText().toString().equals("")) batteryLevel.setText("0");
+        if (speed.getText().toString().equals(""))        speed.setText("0");
+
         // update values
-        BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.BATTERY_INDEX).setValue(batteryLevel.getText().toString());
-        BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.SPEED_INDEX).setValue(speed.getText().toString());
-    
+        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).setValue(batteryLevel.getText().toString());
+        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).setValue(speed.getText().toString());
+
         for (int i = 0; i < bluetoothLE.devices.size(); ++i)
         {
-            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.BATTERY_INDEX), false);
-            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.characteristics.get(BluetoothLE.Characteristics.SPEED_INDEX), false);
+            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY), false);
+            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED), false);
         }
+        
+//        for (int i = 0; i < 101; ++i)
+//        {
+//            BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).setValue(Integer.toString(i));
+//            BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).setValue(Integer.toString(i));
+//
+//            for (int j = 0; i < bluetoothLE.devices.size(); ++j)
+//            {
+//                bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(j), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY), false);
+//                bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(j), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED), false);
+//            }
+//        }
     }
 }
