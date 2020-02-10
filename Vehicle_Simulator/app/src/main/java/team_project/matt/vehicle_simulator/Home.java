@@ -1,6 +1,5 @@
 package team_project.matt.vehicle_simulator;
 
-import android.bluetooth.BluetoothGattCharacteristic;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -11,16 +10,18 @@ import android.widget.EditText;
 import android.view.View;
 import android.widget.Toast;
 
+import java.util.Locale;
+
 public class Home
         extends AppCompatActivity
         implements ActivityCompat.OnRequestPermissionsResultCallback
 {
-    // required for bluetooth communication to client application
-    BluetoothLE bluetoothLE;
+    // vehicle service manages characteristics and communicates changes to BLE
+    Vehicle vehicleService;
     
     // location permission required for BLE to work
     final int   REQUEST_CODE_LOCATION = 1;
-    boolean     hasLocationPermission = false;
+    boolean     hasLocationPermission = false;      // write this to shared prefs later
     
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -35,12 +36,7 @@ public class Home
         if (currentLocationPermission != PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_CODE_LOCATION);
         
-        else
-        {
-            // yes, setup BLE
-            bluetoothLE = new BluetoothLE(getApplicationContext());
-            hasLocationPermission = true;
-        }
+        initialiseVehicle();
     }
     
     @Override
@@ -51,14 +47,8 @@ public class Home
             // location permission
             case REQUEST_CODE_LOCATION:
             {
-                // granted by user
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-                {
-                    bluetoothLE = new BluetoothLE(getApplicationContext());
-                    hasLocationPermission = true;
-                }
-                
-                else
+                // will exit if not granted
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_DENIED)
                 {
                     Toast toast = Toast.makeText(this, "App requires location permissions to function. Closing down.", Toast.LENGTH_LONG);
                     toast.show();
@@ -69,130 +59,110 @@ public class Home
         }
     }
     
+    public void initialiseVehicle()
+    {
+        hasLocationPermission = true;
+        vehicleService = new Vehicle(new BluetoothLE(getApplicationContext()));
+    }
+    
     // starts the server and advertising process
     public void onStartServerClick(View view)
     {
         if (hasLocationPermission)
         {
-            if (bluetoothLE.startAdvertising())
+            if (vehicleService.bluetoothLE.startAdvertising(vehicleService.getUUID()))
             {
-                Button btnPlus = findViewById(R.id.btnPlus);
-                Button btnMinus = findViewById(R.id.btnMinus);
-                Button btnUpdate = findViewById(R.id.btnUpdate);
-                Button btnLeft = findViewById(R.id.btnLeft);
-                Button btnRight = findViewById(R.id.btnRight);
+                if (vehicleService.bluetoothLE.startGATT(vehicleService.getUUID(), vehicleService.getCharacteristicUUIDs(), vehicleService.getCharacteristicFormats()))
+                {
+                    Button btnPlus   = findViewById(R.id.btnPlus);
+                    Button btnMinus  = findViewById(R.id.btnMinus);
+                    Button btnUpdate = findViewById(R.id.btnUpdate);
+                    Button btnLeft   = findViewById(R.id.btnLeft);
+                    Button btnRight  = findViewById(R.id.btnRight);
     
-                btnPlus.setEnabled(true);
-                btnMinus.setEnabled(true);
-                btnUpdate.setEnabled(true);
-                btnLeft.setEnabled(true);
-                btnRight.setEnabled(true);
+                    btnPlus.setEnabled(true);
+                    btnMinus.setEnabled(true);
+                    btnUpdate.setEnabled(true);
+                    btnLeft.setEnabled(true);
+                    btnRight.setEnabled(true);
+                }
             }
         }
-    }
-    
-    public void onMinusClick(View view)
-    {
-        EditText batteryLevel = findViewById(R.id.txtBattery);
-        EditText speed        = findViewById(R.id.txtSpeed);
-    
-        batteryLevel.setText(BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).getStringValue(0));
-        speed.setText(BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).getStringValue(0));
-    
-        // update values
-        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).setValue(Integer.toString(Integer.parseInt(batteryLevel.getText().toString()) - 1));
-        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).setValue(Integer.toString(Integer.parseInt(speed.getText().toString()) - 1));
-    
-        for (int i = 0; i < bluetoothLE.devices.size(); ++i)
-        {
-            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY), false);
-            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED), false);
-        }
-    }
-    
-    public void onPlusClick(View view)
-    {
-        EditText batteryLevel = findViewById(R.id.txtBattery);
-        EditText speed        = findViewById(R.id.txtSpeed);
-        
-        batteryLevel.setText(BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).getStringValue(0));
-        speed.setText(BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).getStringValue(0));
-    
-        // update values
-        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).setValue(Integer.toString(Integer.parseInt(batteryLevel.getText().toString()) + 1));
-        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).setValue(Integer.toString(Integer.parseInt(speed.getText().toString()) + 1));
-    
-        for (int i = 0; i < bluetoothLE.devices.size(); ++i)
-        {
-            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY), false);
-            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED), false);
-        }
-    }
-    
-    // turn on left indicator
-    public void onLeftClick(View view)
-    {
-        BluetoothGattCharacteristic indicator = BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.INDICATOR);
-        
-        // toggle off
-        if (indicator.getStringValue(0).equals(BluetoothLE.Characteristics.INDICATOR_LEFT))
-            indicator.setValue(BluetoothLE.Characteristics.INDICATOR_NONE);
-        
-        // toggle on
-        else indicator.setValue(BluetoothLE.Characteristics.INDICATOR_LEFT);
-        
-        // notify all devices of change
-        for (int i = 0; i < bluetoothLE.devices.size(); ++i)
-            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), indicator, false);
-    }
-    
-    // turn on right indicator
-    public void onRightClick(View view)
-    {
-        BluetoothGattCharacteristic indicator = BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.INDICATOR);
-    
-        // toggle off
-        if (indicator.getStringValue(0).equals(BluetoothLE.Characteristics.INDICATOR_RIGHT))
-            indicator.setValue(BluetoothLE.Characteristics.INDICATOR_NONE);
-        
-        // toggle on
-        else indicator.setValue(BluetoothLE.Characteristics.INDICATOR_RIGHT);
-    
-        // notify all devices of change
-        for (int i = 0; i < bluetoothLE.devices.size(); ++i)
-            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), indicator, false);
     }
     
     // update all modified data and send out a notification
     public void onUpdateClick(View view)
     {
-        EditText batteryLevel = findViewById(R.id.txtBattery);
-        EditText speed        = findViewById(R.id.txtSpeed);
-
-        // dont send blank string
-        if (batteryLevel.getText().toString().equals("")) batteryLevel.setText("0");
-        if (speed.getText().toString().equals(""))        speed.setText("0");
-
-        // update values
-        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).setValue(batteryLevel.getText().toString());
-        BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).setValue(speed.getText().toString());
-
-        for (int i = 0; i < bluetoothLE.devices.size(); ++i)
-        {
-            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY), false);
-            bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED), false);
-        }
+        EditText txtBatteryLevel = findViewById(R.id.txtBattery);
+        EditText txtSpeed        = findViewById(R.id.txtSpeed);
         
-//        for (int i = 0; i < 101; ++i)
-//        {
-//            BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY).setValue(Integer.toString(i));
-//            BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED).setValue(Integer.toString(i));
-//
-//            for (int j = 0; i < bluetoothLE.devices.size(); ++j)
-//            {
-//                bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(j), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.BATTERY), false);
-//                bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(j), BluetoothLE.Characteristics.data.get(BluetoothLE.Characteristics.SPEED), false);
-//            }
-//        }
+        Vehicle.Characteristic battery = vehicleService.getCharacteristic(Vehicle.Property.BATTERY_LVL);
+        Vehicle.Characteristic speed   = vehicleService.getCharacteristic(Vehicle.Property.SPEED);
+        
+        // dont send blank string
+        if (txtBatteryLevel.getText().toString().equals("")) txtBatteryLevel.setText("0");
+        if (txtSpeed.getText().toString().equals(""))        txtSpeed.setText("0");
+        
+        // update values
+        battery.setData(Integer.parseInt(txtBatteryLevel.getText().toString()));
+        speed.setData(Integer.parseInt(txtSpeed.getText().toString()));
+    }
+    
+    public void onMinusClick(View view)
+    {
+        EditText txtBatteryLevel = findViewById(R.id.txtBattery);
+        EditText txtSpeed        = findViewById(R.id.txtSpeed);
+    
+        Vehicle.Characteristic battery = vehicleService.getCharacteristic(Vehicle.Property.BATTERY_LVL);
+        Vehicle.Characteristic speed   = vehicleService.getCharacteristic(Vehicle.Property.SPEED);
+    
+        txtBatteryLevel.setText(String.format(Locale.getDefault(), "%d", battery.getData() - 1));
+        txtSpeed.setText(String.format(Locale.getDefault(), "%d", speed.getData() - 1));
+    
+        // update values
+        battery.setData(Integer.parseInt(txtBatteryLevel.getText().toString()));
+        speed.setData(Integer.parseInt(txtSpeed.getText().toString()));
+    }
+    
+    public void onPlusClick(View view)
+    {
+        EditText txtBatteryLevel = findViewById(R.id.txtBattery);
+        EditText txtSpeed        = findViewById(R.id.txtSpeed);
+    
+        Vehicle.Characteristic battery = vehicleService.getCharacteristic(Vehicle.Property.BATTERY_LVL);
+        Vehicle.Characteristic speed   = vehicleService.getCharacteristic(Vehicle.Property.SPEED);
+    
+        txtBatteryLevel.setText(String.format(Locale.getDefault(), "%d", battery.getData() + 1));
+        txtSpeed.setText(String.format(Locale.getDefault(), "%d", speed.getData() + 1));
+    
+        // update values
+        battery.setData(Integer.parseInt(txtBatteryLevel.getText().toString()));
+        speed.setData(Integer.parseInt(txtSpeed.getText().toString()));
+    }
+    
+    // turn on left indicator
+    public void onLeftClick(View view)
+    {
+        Vehicle.Characteristic turnSignal = vehicleService.getCharacteristic(Vehicle.Property.TURN_SIGNAL);
+        
+        // toggle off
+        if (turnSignal.getData() == vehicleService.STATE_SIGNAL_LEFT)
+            turnSignal.setData(vehicleService.STATE_OFF);
+        
+        // toggle on
+        else turnSignal.setData(vehicleService.STATE_SIGNAL_LEFT);
+    }
+    
+    // turn on right indicator
+    public void onRightClick(View view)
+    {
+        Vehicle.Characteristic turnSignal = vehicleService.getCharacteristic(Vehicle.Property.TURN_SIGNAL);
+    
+        // toggle off
+        if (turnSignal.getData() == vehicleService.STATE_SIGNAL_RIGHT)
+            turnSignal.setData(vehicleService.STATE_OFF);
+        
+            // toggle on
+        else turnSignal.setData(vehicleService.STATE_SIGNAL_RIGHT);
     }
 }
