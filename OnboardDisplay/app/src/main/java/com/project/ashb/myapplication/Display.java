@@ -2,6 +2,7 @@ package com.project.ashb.myapplication;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.animation.AnimatorSet;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
@@ -32,14 +33,15 @@ public class Display extends AppCompatActivity {
     private static final String TAG = "Display";
 
     // attributes to update the GUI
-    ImageView img_indicator_left;
-    ImageView img_indicator_right;
-    TextView textView_connected;
-
-    ImageView iv_needle;
-    ImageView iv_gauge;
-    ImageView iv_gaugeBattery;
-    ImageView iv_needleBattery;
+    ImageView iv_indicator_left;
+    ImageView iv_indicator_right;
+    ImageView iv_needle_speed;
+    ImageView iv_gauge_speed;
+    ImageView iv_gauge_battery;
+    ImageView iv_needle_battery;
+    TextView tv_connected;
+    TextView tv_speed;
+    TextView tv_battery;
 
     // bluetooth attributes
     BluetoothGatt gatt;
@@ -52,10 +54,12 @@ public class Display extends AppCompatActivity {
     List<BluetoothGattDescriptor> device_descriptors = new ArrayList<>();
     List<BluetoothGattCharacteristic> device_characteristics = new ArrayList<>();
 
-    // defined animations for the indicators
+    // Animations
     Animation animation_right = new AlphaAnimation(1, 0);
     Animation animation_left = new AlphaAnimation(1, 0);
     Animation connected_animation = new AlphaAnimation(1,0);
+    RotateAnimation rotateAnimation_speed;
+    RotateAnimation rotateAnimation_battery;
 
     int bottom_iv;
     int right_iv;
@@ -83,30 +87,35 @@ public class Display extends AppCompatActivity {
         gatt = device.connectGatt(getApplicationContext(), false, gatt_callback, 2);
 
         // initialises all of the GUI attributes
-        img_indicator_left = (ImageView) findViewById(R.id.img_indicator_left);
-        img_indicator_right = (ImageView) findViewById(R.id.img_indicator_right);
-        textView_connected = (TextView) findViewById(R.id.text_connected);
-        iv_gauge = (ImageView) findViewById(R.id.gauge);
-        iv_needle = (ImageView) findViewById(R.id.needle);
-        iv_gaugeBattery = (ImageView) findViewById(R.id.gaugeBattery);
-        iv_needleBattery = (ImageView) findViewById(R.id.needleBattery);
+        iv_indicator_left = (ImageView) findViewById(R.id.img_indicator_left);
+        iv_indicator_right = (ImageView) findViewById(R.id.img_indicator_right);
+        tv_connected = (TextView) findViewById(R.id.text_connected);
+        iv_gauge_speed = (ImageView) findViewById(R.id.iv_gauge_speed);
+        iv_needle_speed = (ImageView) findViewById(R.id.iv_needle_speed);
+        iv_gauge_battery = (ImageView) findViewById(R.id.iv_gauge_battery);
+        iv_needle_battery = (ImageView) findViewById(R.id.iv_needle_battery);
+        tv_speed = (TextView) findViewById(R.id.tv_speed);
+        tv_battery = (TextView) findViewById(R.id.tv_battery);
 
         current_pos = starting_pos;
         current_pos_battery = starting_pos_battery;
 
         Rect rect = new Rect();
-        iv_needle.getLocalVisibleRect(rect);
+        iv_needle_speed.getLocalVisibleRect(rect);
         bottom_iv = rect.bottom;
         right_iv = rect.right;
+        rotateAnimation_speed = new RotateAnimation(0, current_pos, bottom_iv, right_iv);
+        rotateAnimation_speed.setFillAfter(true);
+        rotateAnimation_speed.setDuration(500);
+        iv_needle_speed.startAnimation(rotateAnimation_speed);
 
-        RotateAnimation rotateAnimation = new RotateAnimation(0, current_pos, bottom_iv, right_iv);
-        rotateAnimation.setFillAfter(true);
-        rotateAnimation.setDuration(500);
-        iv_needle.startAnimation(rotateAnimation);
-
-        iv_needleBattery.getLocalVisibleRect(rect);
+        iv_needle_battery.getLocalVisibleRect(rect);
         bottom_iv_battery = rect.bottom;
         right_iv_battery = rect.right;
+        rotateAnimation_battery = new RotateAnimation(0, current_pos, bottom_iv, right_iv);
+        rotateAnimation_battery.setFillAfter(true);
+        rotateAnimation_battery.setDuration(500);
+        iv_needle_battery.startAnimation(rotateAnimation_battery);
 
 
         // starts the animations for the indicators (initially hidden)
@@ -122,7 +131,7 @@ public class Display extends AppCompatActivity {
             @Override
             public void onAnimationEnd(Animation arg0) {
                 connected_animation.cancel();
-                textView_connected.setVisibility(View.GONE);
+                tv_connected.setVisibility(View.GONE);
             }
         });
 
@@ -267,8 +276,8 @@ public class Display extends AppCompatActivity {
         animation_left.setRepeatMode(Animation.REVERSE);
 
         // starts the animation
-        img_indicator_right.startAnimation(animation_right);
-        img_indicator_left.startAnimation(animation_left);
+        iv_indicator_right.startAnimation(animation_right);
+        iv_indicator_left.startAnimation(animation_left);
     }
 
     // runs a separate thread from the GattCallback to update the GUI on the UI Thread (used for updating the values throughout)
@@ -279,53 +288,60 @@ public class Display extends AppCompatActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            if (!textView_connected.getText().equals("Connected")) {
-                                textView_connected.setText("Connected");
+                            if (!tv_connected.getText().equals("Connected")) {
+                                tv_connected.setText("Connected");
                                 connected_animation.setDuration(3000);
-                                textView_connected.startAnimation(connected_animation);
+                                tv_connected.startAnimation(connected_animation);
                             }
-
-                            //textview_battery.setText(dashboard_service.battery_level);
-                            //textview_speed.setText(dashboard_service.speed_level);
 
                             // checks the indicator and starts/stops the relevant animations
                             if (dashboard_service.indicator.equals("Right")) {
                                 animation_left.cancel();
                                 animation_right.reset();
-                                img_indicator_right.startAnimation(animation_right);
+                                iv_indicator_right.startAnimation(animation_right);
 
-                                img_indicator_right.setVisibility(View.VISIBLE);
-                                img_indicator_left.setVisibility(View.GONE);
+                                iv_indicator_right.setVisibility(View.VISIBLE);
+                                iv_indicator_left.setVisibility(View.GONE);
                             }
                             else if (dashboard_service.indicator.equals("Left")) {
                                 animation_right.cancel();
                                 animation_left.reset();
-                                img_indicator_left.startAnimation(animation_left);
+                                iv_indicator_left.startAnimation(animation_left);
 
-                                img_indicator_left.setVisibility(View.VISIBLE);
-                                img_indicator_right.setVisibility(View.GONE);
+                                iv_indicator_left.setVisibility(View.VISIBLE);
+                                iv_indicator_right.setVisibility(View.GONE);
                             }
                             else if (dashboard_service.indicator.equals("None")) {
                                 animation_right.cancel();
                                 animation_left.cancel();
 
-                                img_indicator_left.setVisibility(View.GONE);
-                                img_indicator_right.setVisibility(View.GONE);
+                                iv_indicator_left.setVisibility(View.GONE);
+                                iv_indicator_right.setVisibility(View.GONE);
                             }
 
-                            RotateAnimation rotateAnimation = new RotateAnimation(current_pos, starting_pos + Integer.parseInt(dashboard_service.speed_level) * 2.0f, bottom_iv, right_iv);
-                            rotateAnimation.setFillAfter(true);
-                            rotateAnimation.setDuration(2000);
-                            iv_needle.startAnimation(rotateAnimation);
-                            rotateAnimation.setAnimationListener(new Animation.AnimationListener() {
-                                @Override
-                                public void onAnimationStart(Animation animation) {
 
+
+                            tv_speed.setText(dashboard_service.speed_level);
+
+                            // creates an animation with the received speed
+                            rotateAnimation_speed = new RotateAnimation(current_pos, starting_pos + Integer.parseInt(dashboard_service.speed_level) * 2.0f, bottom_iv, right_iv);
+                            // keeps the dial in position
+                            rotateAnimation_speed.setFillAfter(true);
+                            // 0.5 seconds
+                            rotateAnimation_speed.setDuration(50);
+                            // linear interpolator so there is no acceleration or deceleration in the dial
+                            rotateAnimation_speed.setInterpolator(new LinearInterpolator());
+                            // starts the animation
+                            iv_needle_speed.startAnimation(rotateAnimation_speed);
+                            rotateAnimation_speed.setAnimationListener(new Animation.AnimationListener() {
+                                @Override
+                                // saves the new position when the animation is started
+                                public void onAnimationStart(Animation animation) {
+                                    current_pos = starting_pos + Integer.parseInt(dashboard_service.speed_level) * 2.0f;
                                 }
 
                                 @Override
                                 public void onAnimationEnd(Animation arg0) {
-                                    current_pos = starting_pos + Integer.parseInt(dashboard_service.speed_level) * 2.0f;
                                 }
 
                                 @Override
@@ -334,19 +350,21 @@ public class Display extends AppCompatActivity {
                                 }
                             });
 
-                            RotateAnimation rotateAnimation_battery = new RotateAnimation(current_pos_battery, starting_pos_battery + Integer.parseInt(dashboard_service.battery_level) * 2.0f, bottom_iv, right_iv);
+                            tv_battery.setText(dashboard_service.battery_level);
+
+                            rotateAnimation_battery = new RotateAnimation(current_pos_battery, starting_pos_battery + Integer.parseInt(dashboard_service.battery_level) * 2.0f, bottom_iv_battery, right_iv_battery);
                             rotateAnimation_battery.setFillAfter(true);
-                            rotateAnimation_battery.setDuration(2000);
-                            iv_needleBattery.startAnimation(rotateAnimation_battery);
+                            rotateAnimation_battery.setDuration(50);
+                            rotateAnimation_speed.setInterpolator(new LinearInterpolator());
+                            iv_needle_battery.startAnimation(rotateAnimation_battery);
                             rotateAnimation_battery.setAnimationListener(new Animation.AnimationListener() {
                                 @Override
                                 public void onAnimationStart(Animation animation) {
-
+                                    current_pos_battery = starting_pos_battery + Integer.parseInt(dashboard_service.battery_level) * 2.0f;
                                 }
 
                                 @Override
                                 public void onAnimationEnd(Animation arg0) {
-                                    current_pos_battery = starting_pos_battery + Integer.parseInt(dashboard_service.battery_level) * 2.0f;
                                 }
 
                                 @Override
