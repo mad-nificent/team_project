@@ -59,14 +59,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
+
         bluetooth_manager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
         bluetooth_adapter = bluetooth_manager.getAdapter();
         bluetooth_adapter.setName("Display");
 
 
         btn_start_scanning = (Button) findViewById(R.id.btn_start_scanning);
+
         btn_start_scanning.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
+                btn_start_scanning.setEnabled(false);
                 startScanning();
             }
         });
@@ -92,7 +95,15 @@ public class MainActivity extends AppCompatActivity {
             });
             builder.show();
         }
+    }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!btn_start_scanning.isEnabled()) {
+            btn_start_scanning.setEnabled(true);
+            btn_start_scanning.setText("Connect To Nearby Device");
+        }
     }
 
     private ScanCallback le_scan_callback = new ScanCallback() {

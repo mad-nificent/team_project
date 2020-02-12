@@ -21,8 +21,11 @@ import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import org.w3c.dom.Text;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -31,6 +34,8 @@ import java.util.UUID;
 
 public class Display extends AppCompatActivity {
     private static final String TAG = "Display";
+    final int DEVICE_CONNECTED = 1;
+    final int DEVICE_DISCONNECTED = 0;
 
     // attributes to update the GUI
     ImageView iv_indicator_left;
@@ -42,6 +47,9 @@ public class Display extends AppCompatActivity {
     TextView tv_connected;
     TextView tv_speed;
     TextView tv_battery;
+    TextView tv_lights;
+    TextView tv_distance;
+    Button btn_retry;
 
     // bluetooth attributes
     BluetoothGatt gatt;
@@ -57,7 +65,6 @@ public class Display extends AppCompatActivity {
     // Animations
     Animation animation_right = new AlphaAnimation(1, 0);
     Animation animation_left = new AlphaAnimation(1, 0);
-    Animation connected_animation = new AlphaAnimation(1,0);
     RotateAnimation rotateAnimation_speed;
     RotateAnimation rotateAnimation_battery;
 
@@ -96,6 +103,15 @@ public class Display extends AppCompatActivity {
         iv_needle_battery = (ImageView) findViewById(R.id.iv_needle_battery);
         tv_speed = (TextView) findViewById(R.id.tv_speed);
         tv_battery = (TextView) findViewById(R.id.tv_battery);
+        tv_lights = (TextView) findViewById(R.id.tv_lights);
+        tv_distance = (TextView) findViewById(R.id.tv_distance);
+        btn_retry = (Button) findViewById(R.id.btn_retry_connection);
+
+        btn_retry.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                finish();
+            }
+        });
 
         current_pos = starting_pos;
         current_pos_battery = starting_pos_battery;
@@ -112,7 +128,7 @@ public class Display extends AppCompatActivity {
         iv_needle_battery.getLocalVisibleRect(rect);
         bottom_iv_battery = rect.bottom;
         right_iv_battery = rect.right;
-        rotateAnimation_battery = new RotateAnimation(0, current_pos, bottom_iv, right_iv);
+        rotateAnimation_battery = new RotateAnimation(0, current_pos_battery, bottom_iv, right_iv);
         rotateAnimation_battery.setFillAfter(true);
         rotateAnimation_battery.setDuration(500);
         iv_needle_battery.startAnimation(rotateAnimation_battery);
@@ -120,20 +136,6 @@ public class Display extends AppCompatActivity {
 
         // starts the animations for the indicators (initially hidden)
         createIndicatorAnimations();
-
-        connected_animation.setAnimationListener(new Animation.AnimationListener(){
-            @Override
-            public void onAnimationStart(Animation arg0) {
-            }
-            @Override
-            public void onAnimationRepeat(Animation arg0) {
-            }
-            @Override
-            public void onAnimationEnd(Animation arg0) {
-                connected_animation.cancel();
-                tv_connected.setVisibility(View.GONE);
-            }
-        });
 
     }
 
@@ -148,6 +150,7 @@ public class Display extends AppCompatActivity {
             if (status == BluetoothGatt.GATT_FAILURE || status != BluetoothGatt.GATT_SUCCESS || newState == BluetoothProfile.STATE_DISCONNECTED) {
                 // disconnects the service
                 gatt.disconnect();
+                runGUIThread(DEVICE_DISCONNECTED);
             }
 
             // checks if the device is connected
@@ -155,6 +158,7 @@ public class Display extends AppCompatActivity {
                 // waits for any running GATT services to finish
                 try { Thread.sleep(600); }
                 catch (InterruptedException e) { e.printStackTrace(); }
+                runGUIThread(DEVICE_CONNECTED);
                 // attempts to discover services the device is advertising
                 gatt.discoverServices();
             }
@@ -165,24 +169,21 @@ public class Display extends AppCompatActivity {
             Log.d("BluetoothLeService", "onServicesDiscovered()");
             if (status == BluetoothGatt.GATT_SUCCESS) {
 
-                // updates the GUI
-                runGUIThread();
-
                 // gets the services and the services characteristics and stores them as attributes
                 BluetoothGattService service = gatt.getService(UUID.fromString(dashboard_service.SERVICE_UUID));
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard_service.characteristics_UUIDs.get(dashboard_service.BATTERY_POSITION))));
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard_service.characteristics_UUIDs.get(dashboard_service.SPEED_POSITION))));
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard_service.characteristics_UUIDs.get(dashboard_service.INDICATOR_POSITION))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard_service.characteristics_UUIDs.get(dashboard_service.LIGHTS_POSITION))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard_service.characteristics_UUIDs.get(dashboard_service.DISTANCE_POSITION))));
 
-                // runs through each characteristic and sets a notification and acquires the descriptors for each
-                for(int i = 0; i < device_characteristics.size(); i++){
+                runGUIThread(DEVICE_CONNECTED);
+
+                // runs through each characteristic and sets a notification for each
+                for(int i = 0; i < device_characteristics.size() - 1; i++){
                     gatt.setCharacteristicNotification(device_characteristics.get(i), true);
-                    device_descriptors.add(device_characteristics.get(i).getDescriptor(UUID.fromString(dashboard_service.DESCRIPTOR_UUID)));
                 }
-
-                // enables notifications for each of the characteristic descriptors
-                for(int i = 0; i < device_descriptors.size(); i++) device_descriptors.get(i).setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                setNotifications();
+                readCharacteristics();
             }
         }
 
@@ -198,11 +199,6 @@ public class Display extends AppCompatActivity {
             }
         }
 
-        // writes each descriptor to the gatt service (descriptors removed recursively from onDescriptorWrite())
-        public void setNotifications() {
-            gatt.writeDescriptor(device_descriptors.get(device_descriptors.size()-1));
-        }
-
         // reads each characteristic  to to update the GUI with the initial device characteristic values
         //      (characteristics removed recursively from onCharacteristicRead())
         public void readCharacteristics() {
@@ -215,30 +211,27 @@ public class Display extends AppCompatActivity {
             super.onCharacteristicRead(gatt, characteristic, status);
 
             // checks the characteristic passed in against each of the available characteristics then updates the relevant values
-            if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.BATTERY_POSITION)))
+            if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.BATTERY_POSITION))) {
                 dashboard_service.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.SPEED_POSITION)))
+                Log.d("battery READ", dashboard_service.battery_level); }
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.SPEED_POSITION))) {
                 dashboard_service.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.INDICATOR_POSITION)))
+                Log.d("speed READ", dashboard_service.speed_level); }
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.INDICATOR_POSITION))) {
                 dashboard_service.indicator = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-
+                Log.d("Indicator READ", dashboard_service.indicator); }
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.LIGHTS_POSITION))) {
+                dashboard_service.lights = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+                Log.d("lights READ", dashboard_service.lights); }
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.DISTANCE_POSITION))) {
+                dashboard_service.distance = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+                Log.d("distance READ", dashboard_service.distance); }
             // updates the GUI on the UI thread
-            try { runGUIThread(); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
+            try { runGUIThread(DEVICE_CONNECTED); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
 
             // recursively removes each characteristic until all have been read
             device_characteristics.remove(device_characteristics.get(device_characteristics.size() - 1));
             if (device_characteristics.size() > 0) readCharacteristics();
-        }
-
-        // when a descriptor is successfully written, this method will be called
-        @Override
-        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
-            super.onDescriptorWrite(gatt, descriptor, status);
-
-            // recursively removes each descriptor and calls this method when reading
-            device_descriptors.remove(device_descriptors.get(device_descriptors.size() - 1));
-            if (device_descriptors.size() > 0) setNotifications();
-            else readCharacteristics();
         }
 
         // when a characteristic value has changed on the device, this method will be called
@@ -247,15 +240,23 @@ public class Display extends AppCompatActivity {
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
 
             // checks the characteristic passed in against each of the available characteristics then updates the relevant values
-            if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.BATTERY_POSITION)))
+            if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.BATTERY_POSITION))) {
                 dashboard_service.battery_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.SPEED_POSITION)))
+                Log.d("battery CHANGED", dashboard_service.battery_level); }
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.SPEED_POSITION))) {
                 dashboard_service.speed_level = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.INDICATOR_POSITION)))
+                Log.d("speed CHANGED", dashboard_service.speed_level); }
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.INDICATOR_POSITION))) {
                 dashboard_service.indicator = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-
+                Log.d("Indicator CHANGED", dashboard_service.indicator); }
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.LIGHTS_POSITION))) {
+                dashboard_service.lights = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+                Log.d("lights CHANGED", dashboard_service.lights); }
+            else if (characteristic.getUuid().toString().equals(dashboard_service.characteristics_UUIDs.get(dashboard_service.DISTANCE_POSITION))) {
+                dashboard_service.distance = new String(characteristic.getValue(), StandardCharsets.UTF_8);
+                Log.d("distance CHANGED", dashboard_service.distance); }
             // updates the GUI on the UI thread
-            try { runGUIThread(); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
+            try { runGUIThread(DEVICE_CONNECTED); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
         }
     };
 
@@ -274,44 +275,43 @@ public class Display extends AppCompatActivity {
 
         animation_right.setRepeatMode(Animation.REVERSE);
         animation_left.setRepeatMode(Animation.REVERSE);
-
-        // starts the animation
-        iv_indicator_right.startAnimation(animation_right);
-        iv_indicator_left.startAnimation(animation_left);
     }
 
     // runs a separate thread from the GattCallback to update the GUI on the UI Thread (used for updating the values throughout)
-    private void runGUIThread() {
+    private void runGUIThread(final int connection_status) {
         new Thread() {
             public void run() {
                 try {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            if (!tv_connected.getText().equals("Connected")) {
+                            // checks if the device has disconencted and gives the option to try again
+                            if (connection_status == DEVICE_DISCONNECTED) {
+                                tv_connected.setText("Disconencted");
+                                btn_retry.setVisibility(View.VISIBLE);
+                            }
+                            else if (connection_status == DEVICE_CONNECTED) {
                                 tv_connected.setText("Connected");
-                                connected_animation.setDuration(3000);
-                                tv_connected.startAnimation(connected_animation);
+                                btn_retry.setVisibility(View.GONE);
                             }
 
                             // checks the indicator and starts/stops the relevant animations
-                            if (dashboard_service.indicator.equals("Right")) {
+                            if (dashboard_service.indicator.equals("2")) {
                                 animation_left.cancel();
-                                animation_right.reset();
                                 iv_indicator_right.startAnimation(animation_right);
 
                                 iv_indicator_right.setVisibility(View.VISIBLE);
+
                                 iv_indicator_left.setVisibility(View.GONE);
                             }
-                            else if (dashboard_service.indicator.equals("Left")) {
+                            else if (dashboard_service.indicator.equals("1")) {
                                 animation_right.cancel();
-                                animation_left.reset();
                                 iv_indicator_left.startAnimation(animation_left);
 
                                 iv_indicator_left.setVisibility(View.VISIBLE);
                                 iv_indicator_right.setVisibility(View.GONE);
                             }
-                            else if (dashboard_service.indicator.equals("None")) {
+                            else if (dashboard_service.indicator.equals("0")) {
                                 animation_right.cancel();
                                 animation_left.cancel();
 
@@ -320,58 +320,64 @@ public class Display extends AppCompatActivity {
                             }
 
 
+                            if (current_pos != starting_pos + Integer.parseInt(dashboard_service.speed_level)* 2.0f) {
+                                tv_speed.setText(dashboard_service.speed_level);
 
-                            tv_speed.setText(dashboard_service.speed_level);
+                                // creates an animation with the received speed
+                                rotateAnimation_speed = new RotateAnimation(current_pos, starting_pos + Integer.parseInt(dashboard_service.speed_level) * 2.0f, bottom_iv, right_iv);
+                                // keeps the dial in position
+                                rotateAnimation_speed.setFillAfter(true);
+                                // 0.5 seconds
+                                rotateAnimation_speed.setDuration(50);
+                                // linear interpolator so there is no acceleration or deceleration in the dial
+                                rotateAnimation_speed.setInterpolator(new LinearInterpolator());
+                                // starts the animation
+                                iv_needle_speed.startAnimation(rotateAnimation_speed);
+                                rotateAnimation_speed.setAnimationListener(new Animation.AnimationListener() {
+                                    @Override
+                                    // saves the new position when the animation is started
+                                    public void onAnimationStart(Animation animation) {
+                                        current_pos = starting_pos + Integer.parseInt(dashboard_service.speed_level) * 2.0f;
+                                    }
 
-                            // creates an animation with the received speed
-                            rotateAnimation_speed = new RotateAnimation(current_pos, starting_pos + Integer.parseInt(dashboard_service.speed_level) * 2.0f, bottom_iv, right_iv);
-                            // keeps the dial in position
-                            rotateAnimation_speed.setFillAfter(true);
-                            // 0.5 seconds
-                            rotateAnimation_speed.setDuration(50);
-                            // linear interpolator so there is no acceleration or deceleration in the dial
-                            rotateAnimation_speed.setInterpolator(new LinearInterpolator());
-                            // starts the animation
-                            iv_needle_speed.startAnimation(rotateAnimation_speed);
-                            rotateAnimation_speed.setAnimationListener(new Animation.AnimationListener() {
-                                @Override
-                                // saves the new position when the animation is started
-                                public void onAnimationStart(Animation animation) {
-                                    current_pos = starting_pos + Integer.parseInt(dashboard_service.speed_level) * 2.0f;
-                                }
+                                    @Override
+                                    public void onAnimationEnd(Animation arg0) {
+                                    }
 
-                                @Override
-                                public void onAnimationEnd(Animation arg0) {
-                                }
+                                    @Override
+                                    public void onAnimationRepeat(Animation animation) {
 
-                                @Override
-                                public void onAnimationRepeat(Animation animation) {
+                                    }
+                                });
+                            }
 
-                                }
-                            });
+                            if (current_pos_battery != starting_pos_battery + Integer.parseInt(dashboard_service.battery_level)* 2.0f) {
+                                tv_battery.setText(dashboard_service.battery_level);
 
-                            tv_battery.setText(dashboard_service.battery_level);
+                                rotateAnimation_battery = new RotateAnimation(current_pos_battery, starting_pos_battery + Integer.parseInt(dashboard_service.battery_level) * 2.0f, bottom_iv_battery, right_iv_battery);
+                                rotateAnimation_battery.setFillAfter(true);
+                                rotateAnimation_battery.setDuration(50);
+                                rotateAnimation_battery.setInterpolator(new LinearInterpolator());
+                                iv_needle_battery.startAnimation(rotateAnimation_battery);
+                                rotateAnimation_battery.setAnimationListener(new Animation.AnimationListener() {
+                                    @Override
+                                    public void onAnimationStart(Animation animation) {
+                                        current_pos_battery = starting_pos_battery + Integer.parseInt(dashboard_service.battery_level) * 2.0f;
+                                    }
 
-                            rotateAnimation_battery = new RotateAnimation(current_pos_battery, starting_pos_battery + Integer.parseInt(dashboard_service.battery_level) * 2.0f, bottom_iv_battery, right_iv_battery);
-                            rotateAnimation_battery.setFillAfter(true);
-                            rotateAnimation_battery.setDuration(50);
-                            rotateAnimation_speed.setInterpolator(new LinearInterpolator());
-                            iv_needle_battery.startAnimation(rotateAnimation_battery);
-                            rotateAnimation_battery.setAnimationListener(new Animation.AnimationListener() {
-                                @Override
-                                public void onAnimationStart(Animation animation) {
-                                    current_pos_battery = starting_pos_battery + Integer.parseInt(dashboard_service.battery_level) * 2.0f;
-                                }
+                                    @Override
+                                    public void onAnimationEnd(Animation arg0) {
+                                    }
 
-                                @Override
-                                public void onAnimationEnd(Animation arg0) {
-                                }
+                                    @Override
+                                    public void onAnimationRepeat(Animation animation) {
 
-                                @Override
-                                public void onAnimationRepeat(Animation animation) {
+                                    }
+                                });
+                            }
 
-                                }
-                            });
+                            tv_lights.setText(dashboard_service.lights);
+                            tv_distance.setText(dashboard_service.distance);
 
                         }
                     });
