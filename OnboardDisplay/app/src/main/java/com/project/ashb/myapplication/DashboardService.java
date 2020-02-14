@@ -6,15 +6,15 @@ import java.util.Map;
 public class DashboardService {
 
     /* ------ CHARACTERISTIC VALUES ------ */
-    public int battery_charge        = 0;
+    public int battery_charge           = 0;
     public String battery_range         = "0";
     public String battery_charge_status = "0";
     public String battery_temp          = "0";
 
-    public int speed                 = 0;
-    public int distance_traveled     = 0;
-    public int turn_signal           = 0;
-    public int lights                = 0;
+    public int speed                    = 0;
+    public int distance_traveled        = 0;
+    public int turn_signal              = 0;
+    public int lights                   = 0;
     public String parking_break         = "0";
 
     public String master_warning        = "0";
@@ -26,33 +26,19 @@ public class DashboardService {
     public String abs                   = "0";
     public String motor                 = "0";
 
-    /* ------ CHARACTERISTIC POSITIONS ------ */
-    final int BATTERY_CHARGE        = 0;
-    final int BATTERY_RANGE         = 1;
-    final int BATTERY_CHARGE_STATUS = 2;
-    final int BATTERY_TEMP          = 3;
-
-    final int SPEED                 = 4;
-    final int DISTANCE_TRAVELED     = 5;
-    final int TURN_SIGNAL           = 6;
-    final int LIGHTS                = 7;
-    final int PARKING_BREAK         = 8;
-
-    final int MASTER_WARNING        = 9;
-    final int SEAT_BELT             = 10;
-    final int LIGHTS_FAULT          = 11;
-    final int LOW_WIPER_FLUID       = 12;
-    final int LOW_TIRE_PRESSURE     = 13;
-    final int AIR_BAGS              = 14;
-    final int BRAKE_SYSTEM          = 15;
-    final int ABS                   = 16;
-    final int MOTOR                 = 17;
+    /* ------ BATTERY ------ */
+    final int BATTERY_CHARGE = 0, BATTERY_RANGE = 1, BATTERY_CHARGE_STATUS = 2, BATTERY_TEMP = 3;
+    /* ------ CAR STATE ------ */
+    final int SPEED  = 4, DISTANCE_TRAVELED = 5, TURN_SIGNAL  = 6, LIGHTS = 7, PARKING_BREAK = 8;
+    /* ------ WARNINGS ------ */
+    final int MASTER_WARNING = 9, SEAT_BELT = 10, LIGHTS_FAULT = 11, LOW_WIPER_FLUID = 12, LOW_TIRE_PRESSURE  = 13, AIR_BAGS = 14, BRAKE_SYSTEM = 15, ABS = 16, MOTOR = 17;
 
     String SERVICE_UUID = "dee0e505-9680-430e-a4c4-a225905ce33d";
 
     Map<Integer, String> characteristics = new HashMap<Integer, String>();
 
     DashboardService() {
+        /* ------ BATTERY ------ */
         characteristics.put(BATTERY_CHARGE,         "76a247fb-a76f-42da-91ce-d6a5bdebd0e2");
         characteristics.put(BATTERY_RANGE,          "bf252fd6-c1e3-4835-b4be-b5e353e62d7b");    // battery range (mileage)
         characteristics.put(BATTERY_CHARGE_STATUS,  "ed88d679-5aba-4fda-a710-42156bc85524");    // battery charging status
