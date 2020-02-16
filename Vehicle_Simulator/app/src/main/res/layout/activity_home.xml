@@ -1,86 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TableLayout
+<android.support.constraint.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".Home">
 
-    <TableRow>
+    <Button
+        android:id="@+id/btnStart"
 
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
 
-            android:text="Start Server"
-            android:onClick="onStartServerClick"/>
+        android:text="Start"
+        android:onClick="onStartServerClick"/>
 
-    </TableRow>
-
-    <TableRow android:gravity="center">
-
-        <EditText
-            android:id="@+id/txtBattery"
-            android:layout_width="150dp"
-            android:textAlignment="center"
-
-            android:hint="Battery Level (%)"
-            android:inputType="number"
-            android:maxLength="3"/>
-
-        <EditText
-            android:id="@+id/txtSpeed"
-            android:layout_width="150dp"
-            android:textAlignment="center"
-
-            android:hint="Speed (mph)"
-            android:inputType="number"
-            android:maxLength="3" />
-    </TableRow>
-
-    <TableRow android:gravity="center">
-
-        <Button
-            android:id="@+id/btnMinus"
-            android:enabled="false"
-            android:text="-"
-            android:onClick="onMinusClick"/>
-
-        <Button
-            android:id="@+id/btnPlus"
-            android:enabled="false"
-            android:text="+"
-            android:onClick="onPlusClick"/>
-
-    </TableRow>
-
-    <TableRow android:gravity="center">
-
-        <Button
-            android:id="@+id/btnUpdate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:enabled="false"
-            android:text="Update"
-            android:onClick="onUpdateClick"/>
-
-    </TableRow>
-
-    <TableRow android:gravity="center">
-
-        <Button
-            android:id="@+id/btnLeft"
-            android:enabled="false"
-            android:text="Left"
-            android:onClick="onLeftClick"/>
-
-        <Button
-            android:id="@+id/btnRight"
-            android:enabled="false"
-            android:text="Right"
-            android:onClick="onRightClick"/>
-
-    </TableRow>
-
-</TableLayout>
+</android.support.constraint.ConstraintLayout>

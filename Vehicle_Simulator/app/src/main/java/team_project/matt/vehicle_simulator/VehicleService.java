@@ -2,9 +2,9 @@ package team_project.matt.vehicle_simulator;
 
 import android.bluetooth.BluetoothGattCharacteristic;
 
-import java.util.ArrayList;;
+import java.util.ArrayList;
 
-public class Vehicle
+public class VehicleService
 {
     BluetoothLE bluetoothLE;
     
@@ -25,7 +25,7 @@ public class Vehicle
     // property states
     public final int         STATE_OFF = 0,           STATE_ON = 1;
     public final int STATE_SIGNAL_LEFT = 1, STATE_SIGNAL_RIGHT = 2;
-    public final int  STATE_LIGHTS_LOW = 1,  STATE_LIGTHS_HIGH = 2;
+    public final int  STATE_LIGHTS_LOW = 1,  STATE_LIGHTS_HIGH = 2;
     public final int STATE_WARNING_LOW = 1, STATE_WARNING_HIGH = 2;
     
     public class Characteristic
@@ -90,7 +90,7 @@ public class Vehicle
     
     private ArrayList<Characteristic> characteristics = new ArrayList<>();
     
-    Vehicle(BluetoothLE bluetoothLE)
+    VehicleService(BluetoothLE bluetoothLE)
     {
         this.bluetoothLE = bluetoothLE;
         
@@ -169,7 +169,7 @@ public class Vehicle
     
         newCharacteristic.addSupportedValue(STATE_OFF);
         newCharacteristic.addSupportedValue(STATE_LIGHTS_LOW);
-        newCharacteristic.addSupportedValue(STATE_LIGTHS_HIGH);
+        newCharacteristic.addSupportedValue(STATE_LIGHTS_HIGH);
         
         characteristics.add(newCharacteristic);
     
@@ -292,7 +292,10 @@ public class Vehicle
         return null;
     }
     
-    public ArrayList<Characteristic> getCharacteristics() { return characteristics; }
+    public ArrayList<Characteristic> getCharacteristics()
+    {
+        return characteristics;
+    }
     
     public ArrayList<String> getCharacteristicUUIDs()
     {

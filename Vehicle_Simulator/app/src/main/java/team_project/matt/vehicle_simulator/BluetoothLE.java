@@ -25,7 +25,8 @@ import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
 import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTED;
 
 // contains all relevant objects and data required for bluetooth communication over the vehicle service
-public class BluetoothLE extends Activity
+public class BluetoothLE
+        extends Activity
 {
     Context context;
     
