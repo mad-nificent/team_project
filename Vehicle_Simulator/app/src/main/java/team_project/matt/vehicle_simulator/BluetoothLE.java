@@ -170,8 +170,8 @@ public class BluetoothLE
         {
             // adjust preferences for advertising from this device
             AdvertiseSettings settings = new AdvertiseSettings.Builder()
-                    .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)   // consume least amount of power at the cost of higher latency
-                    .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_LOW)      // low power consumption and signal range (client device will be inside vehicle anyway)
+                    .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)   // consume least amount of power at the cost of higher latency
+                    .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)      // low power consumption and signal range (client device will be inside vehicle anyway)
                     .setConnectable(true)                                           // devices can connect to subscribe to updates
                     .build();
     

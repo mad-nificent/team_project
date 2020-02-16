@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -77,10 +76,26 @@ public class Home
                     setContentView(R.layout.prototype_interface);
                     
                     vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(100);
+                    vehicleService.getCharacteristic(VehicleService.Property.RANGE).setData(0);                             //get from shared prefs later
+                    vehicleService.getCharacteristic(VehicleService.Property.CHARGING).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData(20);                     // safe temp 20-45c
+    
                     vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(0);
+                    vehicleService.getCharacteristic(VehicleService.Property.RPM).setData(0);
                     vehicleService.getCharacteristic(VehicleService.Property.DISTANCE).setData(0);
-                    vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(vehicleService.STATE_OFF);
                     vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.HANDBRAKE).setData(vehicleService.STATE_ON);
+    
+                    vehicleService.getCharacteristic(VehicleService.Property.WARNING).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.SEATBELT).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.LIGHTS_ERR).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.ABS_ERR).setData(vehicleService.STATE_OFF);
+                    vehicleService.getCharacteristic(VehicleService.Property.ENGIN_ERR).setData(vehicleService.STATE_OFF);
                 }
             }
         }
@@ -107,8 +122,7 @@ public class Home
     public void onMinusClick(View view)
     {
         EditText txtView;
-        Button btn = findViewById(view.getId());
-        VehicleService.Characteristic characteristic = null;
+        VehicleService.Characteristic characteristic;
         
         if (view.getId() == R.id.btnDecreaseBattery)
         {
@@ -124,34 +138,46 @@ public class Home
         
         else return;
         
-        // update text view and characteristic
-        txtView.setText(String.format(Locale.getDefault(), "%d", characteristic.getData() - 1));
-        characteristic.setData(Integer.parseInt(txtView.getText().toString()));
+        int data = characteristic.getData();
+        if (data > 0)
+        {
+            data -= 1;
+            // update text view and characteristic
+            txtView.setText(String.format(Locale.getDefault(), "%d", data));
+            characteristic.setData(data);
+        }
     }
     
     public void onPlusClick(View view)
     {
         EditText txtView;
-        Button btn = findViewById(view.getId());
-        VehicleService.Characteristic characteristic = null;
+        VehicleService.Characteristic characteristic;
+        int max = 0;
         
         if (view.getId() == R.id.btnIncreaseBattery)
         {
             txtView = findViewById(R.id.txtBattery);
             characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL);
+            max = 100;
         }
         
         else if (view.getId() == R.id.btnIncreaseSpeed)
         {
             txtView = findViewById(R.id.txtSpeed);
             characteristic = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
+            max = 120;
         }
         
         else return;
-        
-        // update text view and characteristic
-        txtView.setText(String.format(Locale.getDefault(), "%d", characteristic.getData() + 1));
-        characteristic.setData(Integer.parseInt(txtView.getText().toString()));
+    
+        int data = characteristic.getData();
+        if (data < max)
+        {
+            data += 1;
+            // update text view and characteristic
+            txtView.setText(String.format(Locale.getDefault(), "%d", data));
+            characteristic.setData(data);
+        }
     }
     
     // turn on left indicator

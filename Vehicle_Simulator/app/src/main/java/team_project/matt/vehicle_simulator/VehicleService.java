@@ -19,7 +19,7 @@ public class VehicleService
         SPEED, RPM, DISTANCE, TURN_SIGNAL, LIGHTS, HANDBRAKE,
         
         // warnings
-        WARNING, SEATBELT, LIGHTS_ERR, WIPER_LOW, TYPE_PRESSURE_LOW, AIRBAG_ERR, BRAKE_ERR, ABS_ERR, ENGIN_ERR
+        WARNING, SEATBELT, LIGHTS_ERR, WIPER_LOW, TYRE_PRESSURE_LOW, AIRBAG_ERR, BRAKE_ERR, ABS_ERR, ENGIN_ERR
     }
     
     // property states
@@ -228,7 +228,7 @@ public class VehicleService
     
         newCharacteristic = new Characteristic
                 ("ce99220c-75ed-4d38-9b25-5a0f7e766016",
-                        Property.TYPE_PRESSURE_LOW,
+                        Property.TYRE_PRESSURE_LOW,
                         Characteristic.FORMAT_STATE);
     
         newCharacteristic.addSupportedValue(STATE_OFF);
