@@ -6,25 +6,26 @@ import java.util.Map;
 public class DashboardService {
 
     /* ------ CHARACTERISTIC VALUES ------ */
-    public int battery_charge           = 0;
-    public String battery_range         = "0";
-    public String battery_charge_status = "0";
-    public String battery_temp          = "0";
+    public int battery_charge        = 0;
+    public int battery_range         = 0;
+    public int battery_charge_status = 0;
+    public int battery_temp          = 0;
 
-    public int speed                    = 0;
-    public int distance_traveled        = 0;
-    public int turn_signal              = 0;
-    public int lights                   = 0;
-    public String parking_break         = "0";
+    public int speed                 = 0;
+    public int distance_traveled     = 0;
+    public int turn_signal           = 0;
+    public int lights                = 0;
+    public int parking_brake = 0;
 
-    public String master_warning        = "0";
-    public String seat_belt             = "0";
-    public String lights_fault          = "0";
-    public String low_wiper_fluid       = "0";
-    public String low_tire_pressure     = "0";
-    public String air_bags              = "0";
-    public String abs                   = "0";
-    public String motor                 = "0";
+    public int master_warning        = 0;
+    public int seat_belt             = 0;
+    public int lights_fault          = 0;
+    public int low_wiper_fluid       = 0;
+    public int low_tire_pressure     = 0;
+    public int air_bags              = 0;
+    public int brake_system          = 0;
+    public int abs                   = 0;
+    public int motor                 = 0;
 
     /* ------ BATTERY ------ */
     final int BATTERY_CHARGE = 0, BATTERY_RANGE = 1, BATTERY_CHARGE_STATUS = 2, BATTERY_TEMP = 3;

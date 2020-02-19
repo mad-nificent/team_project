@@ -5,32 +5,186 @@
     android:paddingLeft="16dp"
     android:paddingRight="16dp">
 
-    <TextView
-        android:id="@+id/txtTitle"
-        android:layout_width="699dp"
-        android:layout_height="60dp"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentEnd="true"
-        android:layout_gravity="fill_horizontal"
-        android:fontFamily="sans-serif-light"
-        android:text="Onboard Display"
-        android:textAlignment="center"
-        android:textSize="40sp"
-        android:onClick="onRetryClick"
-        android:layout_marginStart="180dp"
-        android:layout_marginEnd="180dp"
-        android:layout_marginTop="10dp"/>
+<!--    <TextView-->
+<!--        android:id="@+id/txtTitle"-->
+<!--        android:layout_width="699dp"-->
+<!--        android:layout_height="60dp"-->
+<!--        android:layout_alignParentStart="true"-->
+<!--        android:layout_alignParentEnd="true"-->
+<!--        android:layout_gravity="fill_horizontal"-->
+<!--        android:fontFamily="sans-serif-light"-->
+<!--        android:text="Onboard Display"-->
+<!--        android:textAlignment="center"-->
+<!--        android:textSize="40sp"-->
+<!--        android:onClick="onRetryClick"-->
+<!--        android:layout_marginStart="180dp"-->
+<!--        android:layout_marginEnd="180dp"-->
+<!--        android:layout_marginTop="10dp"/>-->
 
+    <ImageView
+        android:id="@+id/iv_master_warning"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="5dp"
+        android:src="@drawable/placeholder_icon_grey"/>
+
+
+    <ImageView
+        android:id="@+id/iv_seatbelt"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_master_warning"
+        android:src="@drawable/placeholder_icon_grey" />
+
+    <ImageView
+        android:id="@+id/iv_lights_fault"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_seatbelt"
+        android:src="@drawable/placeholder_icon_grey" />
+
+    <ImageView
+        android:id="@+id/iv_low_wiper_fluid"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_lights_fault"
+        android:src="@drawable/placeholder_icon_grey" />
+
+    <ImageView
+        android:id="@+id/iv_low_tire_pressure"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_low_wiper_fluid"
+        android:src="@drawable/placeholder_icon_grey" />
+
+    <ImageView
+        android:id="@+id/iv_air_bag_fault"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_low_tire_pressure"
+        android:src="@drawable/placeholder_icon_grey" />
+
+    <ImageView
+        android:id="@+id/iv_brakes"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_air_bag_fault"
+        android:src="@drawable/placeholder_icon_grey" />
+
+    <ImageView
+        android:id="@+id/iv_abs"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_brakes"
+        android:src="@drawable/placeholder_icon_grey" />
+
+    <ImageView
+        android:id="@+id/iv_motor"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_abs"
+        android:src="@drawable/placeholder_icon_grey" />
+
+    <ImageView
+        android:id="@+id/iv_handbrake"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="100dp"
+        android:layout_marginEnd="5dp"
+        android:layout_toStartOf="@+id/iv_gauge_battery"
+        android:layout_toEndOf="@+id/iv_gauge_speed"
+        android:src="@drawable/placeholder_icon_grey" />
+
+    <ImageView
+        android:id="@+id/iv_light_intensity"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_below="@+id/iv_handbrake"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="50dp"
+        android:layout_marginEnd="5dp"
+        android:layout_toStartOf="@+id/iv_gauge_battery"
+        android:layout_toEndOf="@+id/iv_gauge_speed"
+        android:src="@drawable/placeholder_icon_grey" />
+
+    <TextView
+        android:id="@+id/iv_distance"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="5dp"
+        android:layout_marginBottom="5dp"
+        android:text="Distance Traveled"/>
+
+    <TextView
+        android:id="@+id/iv_battery_range"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd = "5dp"
+        android:layout_marginBottom="5dp"
+        android:text="Battery Range Left"/>
+
+    <TextView
+        android:id="@+id/iv_battery_temp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="5dp"
+        android:layout_toStartOf="@+id/iv_battery_range"
+        android:text="0°C" />
+
+    <ImageView
+        android:id="@+id/iv_charging"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_below="@+id/btn_retry_connection"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="5dp"
+        android:layout_marginEnd="5dp"
+        android:src="@drawable/placeholder_icon_grey" />
 
     <TextView
         android:id="@+id/text_connected"
         android:layout_width="120dp"
         android:layout_height="wrap_content"
         android:layout_columnWeight="1"
-        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
         android:layout_alignParentTop="true"
         android:layout_gravity="fill_horizontal"
-        android:layout_marginStart="0dp"
+        android:layout_marginEnd="0dp"
         android:layout_marginTop="0dp"
         android:fontFamily="sans-serif-light"
         android:text="Connecting..."
@@ -43,10 +197,10 @@
         android:layout_width="120dp"
         android:layout_height="35dp"
         android:layout_below="@+id/text_connected"
-        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
         android:fontFamily="sans-serif-light"
         android:textAllCaps="false"
-        android:layout_marginStart="0dp"
+        android:layout_marginEnd="0dp"
         android:layout_marginTop="0dp"
         android:textSize="12dp"/>
 
@@ -101,18 +255,18 @@
         android:contentDescription="@string/app_name"/>
 
     <ImageView
-        android:id="@+id/img_indicator_right"
-        android:layout_width="116dp"
-        android:layout_height="89dp"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginStart="500dp"
-        android:layout_marginEnd="30dp"
-        android:layout_marginBottom="10dp"
-        android:animateLayoutChanges="true"
-        android:src="@drawable/right_indicator"
-        android:visibility="gone"/>
+    android:id="@+id/img_indicator_right"
+    android:layout_width="116dp"
+    android:layout_height="89dp"
+    android:layout_alignParentStart="true"
+    android:layout_alignParentEnd="true"
+    android:layout_alignParentBottom="true"
+    android:layout_marginStart="500dp"
+    android:layout_marginEnd="30dp"
+    android:layout_marginBottom="25dp"
+    android:animateLayoutChanges="true"
+    android:src="@drawable/right_indicator_green"
+    android:visibility="gone"/>
 
     <ImageView
         android:id="@+id/img_indicator_left"
@@ -123,10 +277,36 @@
         android:layout_alignParentBottom="true"
         android:layout_marginStart="30dp"
         android:layout_marginEnd="500dp"
-        android:layout_marginBottom="10dp"
+        android:layout_marginBottom="25dp"
         android:animateLayoutChanges="true"
-        android:src="@drawable/left_indicator"
+        android:src="@drawable/left_indicator_green"
         android:visibility="gone"/>
+
+    <ImageView
+        android:id="@+id/img_indicator_right_grey"
+        android:layout_width="116dp"
+        android:layout_height="89dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="500dp"
+        android:layout_marginEnd="30dp"
+        android:layout_marginBottom="25dp"
+        android:animateLayoutChanges="true"
+        android:src="@drawable/right_indicator_grey" />
+
+    <ImageView
+        android:id="@+id/img_indicator_left_grey"
+        android:layout_width="116dp"
+        android:layout_height="89dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="30dp"
+        android:layout_marginEnd="500dp"
+        android:layout_marginBottom="25dp"
+        android:animateLayoutChanges="true"
+        android:src="@drawable/left_indicator_grey" />
 
     <TextView
         android:id="@+id/tv_speed"
@@ -191,34 +371,6 @@
         android:layout_marginBottom="2dp"
         android:fontFamily="sans-serif-light"
         android:text="%"
-        android:textAlignment="center"
-        android:textSize="30sp" />
-
-    <TextView
-        android:id="@+id/tv_distance"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/txtTitle"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="50dp"
-        android:layout_marginEnd="10dp"
-        android:layout_toStartOf="@+id/iv_gauge_battery"
-        android:layout_toEndOf="@+id/iv_gauge_speed"
-        android:textAlignment="center"
-        android:textSize="30sp"
-        android:fontFamily="sans-serif-light"/>
-
-    <TextView
-        android:id="@+id/tv_lights"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/tv_distance"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="50dp"
-        android:layout_marginEnd="10dp"
-        android:layout_toStartOf="@+id/iv_gauge_battery"
-        android:layout_toEndOf="@+id/iv_gauge_speed"
-        android:fontFamily="sans-serif-light"
         android:textAlignment="center"
         android:textSize="30sp" />
 </RelativeLayout>

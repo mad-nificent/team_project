@@ -53,8 +53,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        configureGUI();     // removes un-needed elements from the GUI
         performChecks();    // sets up bluetooth and checks for if bluetooth and location are enabled
+        configureGUI();     // removes un-needed elements from the GUI
 
         btn_start_scanning = (Button) findViewById(R.id.btn_start_scanning);
         btn_start_scanning.setOnClickListener(new View.OnClickListener() {
@@ -69,25 +69,26 @@ public class MainActivity extends AppCompatActivity {
         // landscape
         this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         // remove navigation bar
-        this.getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
-                        | View.SYSTEM_UI_FLAG_IMMERSIVE);
+//        this.getWindow().getDecorView().setSystemUiVisibility(
+//                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+//                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+//                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+//                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
+//                        | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
+//                        | View.SYSTEM_UI_FLAG_IMMERSIVE);
     }
 
     public void performChecks() {
         bluetooth_manager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
         bluetooth_adapter = bluetooth_manager.getAdapter();
-        bluetooth_scanner = bluetooth_adapter.getBluetoothLeScanner();
 
         // checks if the bluetooth on the device is enabled
         if (bluetooth_adapter != null && !bluetooth_adapter.isEnabled()) {
             Intent enable_intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enable_intent, REQUEST_ENABLE_BT);
         }
+
+
 
         if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             final AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -153,20 +154,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startScanning() {
-        btn_start_scanning.setText("Attempting Connection...");
-        btn_start_scanning.setEnabled(false);
-        System.out.println("start scanning");
-        devices.clear();
-        AsyncTask.execute(new Runnable() {
-            @Override
-            public void run() {
-                ScanFilter filter = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(dashboard_service.SERVICE_UUID)).build();
-                List<ScanFilter> filters = new ArrayList<>();
-                filters.add(filter);
-                ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
-                bluetooth_scanner.startScan(filters, settings, le_scan_callback);
+        if (bluetooth_adapter.isEnabled()) {
+            bluetooth_scanner = bluetooth_adapter.getBluetoothLeScanner();
+            btn_start_scanning.setText("Attempting Connection...");
+            btn_start_scanning.setEnabled(false);
+            System.out.println("start scanning");
+            devices.clear();
+            AsyncTask.execute(new Runnable() {
+                @Override
+                public void run() {
+                    ScanFilter filter = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(dashboard_service.SERVICE_UUID)).build();
+                    List<ScanFilter> filters = new ArrayList<>();
+                    filters.add(filter);
+                    ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+                    bluetooth_scanner.startScan(filters, settings, le_scan_callback);
+                }
+            });
+        }
+        else {
+            if (bluetooth_adapter != null && !bluetooth_adapter.isEnabled()) {
+                Intent enable_intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enable_intent, REQUEST_ENABLE_BT);
             }
-        });
+        }
     }
 
     public void stopScanning() {

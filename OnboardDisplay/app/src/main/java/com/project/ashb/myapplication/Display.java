@@ -38,15 +38,26 @@ public class Display extends AppCompatActivity {
     // attributes to update the GUI
     ImageView   iv_indicator_left;
     ImageView   iv_indicator_right;
+    ImageView   iv_indicator_left_grey;
+    ImageView   iv_indicator_right_grey;
     ImageView   iv_needle_speed;
     ImageView   iv_gauge_speed;
     ImageView   iv_gauge_battery;
     ImageView   iv_needle_battery;
+
+    ImageView   iv_master_warning;
+    ImageView   iv_seatbelt;
+    ImageView   iv_lights_fault;
+    ImageView   iv_low_wiper_fluid;
+    ImageView   iv_low_tire_pressure;
+    ImageView   iv_airbags;
+    ImageView   iv_brake_system;
+    ImageView   iv_abs;
+    ImageView   iv_motor;
+
     TextView    tv_connected;
     TextView    tv_speed;
     TextView    tv_battery;
-    TextView    tv_lights;
-    TextView    tv_distance;
     Button      btn_retry;
 
     // bluetooth attributes
@@ -90,18 +101,27 @@ public class Display extends AppCompatActivity {
         gatt = device.connectGatt(getApplicationContext(), false, gatt_callback, 2);
 
         // initialises all of the GUI attributes
-        iv_indicator_left =     (ImageView) findViewById(R.id.img_indicator_left);
-        iv_indicator_right =    (ImageView) findViewById(R.id.img_indicator_right);
-        iv_gauge_speed =        (ImageView) findViewById(R.id.iv_gauge_speed);
-        iv_needle_speed =       (ImageView) findViewById(R.id.iv_needle_speed);
-        iv_gauge_battery =      (ImageView) findViewById(R.id.iv_gauge_battery);
-        iv_needle_battery =     (ImageView) findViewById(R.id.iv_needle_battery);
-        tv_connected =          (TextView) findViewById(R.id.text_connected);
-        tv_speed =              (TextView) findViewById(R.id.tv_speed);
-        tv_battery =            (TextView) findViewById(R.id.tv_battery);
-        tv_lights =             (TextView) findViewById(R.id.tv_lights);
-        tv_distance =           (TextView) findViewById(R.id.tv_distance);
-        btn_retry =             (Button) findViewById(R.id.btn_retry_connection);
+        iv_indicator_left =         (ImageView) findViewById(R.id.img_indicator_left);
+        iv_indicator_right =        (ImageView) findViewById(R.id.img_indicator_right);
+        iv_indicator_left_grey =    (ImageView) findViewById(R.id.img_indicator_left_grey);
+        iv_indicator_right_grey =   (ImageView) findViewById(R.id.img_indicator_right_grey);
+        iv_gauge_speed =            (ImageView) findViewById(R.id.iv_gauge_speed);
+        iv_needle_speed =           (ImageView) findViewById(R.id.iv_needle_speed);
+        iv_gauge_battery =          (ImageView) findViewById(R.id.iv_gauge_battery);
+        iv_needle_battery =         (ImageView) findViewById(R.id.iv_needle_battery);
+        iv_master_warning =         (ImageView) findViewById(R.id.iv_master_warning);
+        iv_seatbelt  =              (ImageView) findViewById(R.id.iv_seatbelt);
+        iv_lights_fault  =              (ImageView) findViewById(R.id.iv_lights_fault);
+        iv_low_tire_pressure  =              (ImageView) findViewById(R.id.iv_low_tire_pressure);
+        iv_low_wiper_fluid  =              (ImageView) findViewById(R.id.iv_low_wiper_fluid);
+        iv_airbags  =              (ImageView) findViewById(R.id.iv_air_bag_fault);
+        iv_brake_system  =              (ImageView) findViewById(R.id.iv_brakes);
+        iv_abs  =              (ImageView) findViewById(R.id.iv_abs);
+        iv_motor  =              (ImageView) findViewById(R.id.iv_motor);
+        tv_connected =              (TextView) findViewById(R.id.text_connected);
+        tv_speed =                  (TextView) findViewById(R.id.tv_speed);
+        tv_battery =                (TextView) findViewById(R.id.tv_battery);
+        btn_retry =                 (Button) findViewById(R.id.btn_retry_connection);
 
         btn_retry.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -120,13 +140,13 @@ public class Display extends AppCompatActivity {
         // landscape
         this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         // remove navigation bar
-        this.getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
-                        | View.SYSTEM_UI_FLAG_IMMERSIVE);
+//        this.getWindow().getDecorView().setSystemUiVisibility(
+//                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+//                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+//                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+//                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
+//                        | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
+//                        | View.SYSTEM_UI_FLAG_IMMERSIVE);
     }
 
     public BluetoothGattCallback gatt_callback = new BluetoothGattCallback() {
@@ -164,10 +184,25 @@ public class Display extends AppCompatActivity {
                 BluetoothGattService service = gatt.getService(UUID.fromString(dashboard.SERVICE_UUID));
 
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BATTERY_CHARGE))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BATTERY_RANGE))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BATTERY_TEMP))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BATTERY_CHARGE_STATUS))));
+
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.SPEED))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.DISTANCE_TRAVELED))));
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.TURN_SIGNAL))));
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.LIGHTS))));
-                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.DISTANCE_TRAVELED))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.PARKING_BREAK))));
+
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.MASTER_WARNING))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.SEAT_BELT))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.LIGHTS_FAULT))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.LOW_WIPER_FLUID))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.LOW_TIRE_PRESSURE))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.AIR_BAGS))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BRAKE_SYSTEM))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.ABS))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.MOTOR))));
 
                 // refresh the GUI
                 runGUIThread(DEVICE_CONNECTED);
@@ -207,16 +242,62 @@ public class Display extends AppCompatActivity {
             String recieved_value = new String(characteristic.getValue(), StandardCharsets.UTF_8);
 
             // checks the characteristic passed in against each of the available characteristics then updates the relevant values
-            if (current_char.equals             (dashboard.characteristics.get(dashboard.BATTERY_CHARGE)))
+            if (current_char.equals             (dashboard.characteristics.get(dashboard.BATTERY_CHARGE))) {
                 dashboard.battery_charge        = Integer.parseInt(recieved_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.SPEED)))
+                Log.d("charge READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BATTERY_RANGE))) {
+                dashboard.battery_range         = Integer.parseInt(recieved_value);
+                Log.d("range READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BATTERY_TEMP))) {
+                dashboard.battery_temp          = Integer.parseInt(recieved_value);
+                Log.d("temp READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BATTERY_CHARGE_STATUS))) {
+                dashboard.battery_charge_status = Integer.parseInt(recieved_value);
+                Log.d("status READ", recieved_value); }
+
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.SPEED))) {
                 dashboard.speed                 = Integer.parseInt(recieved_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.TURN_SIGNAL)))
-                dashboard.turn_signal           = Integer.parseInt(recieved_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LIGHTS)))
-                dashboard.lights                = Integer.parseInt(recieved_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.DISTANCE_TRAVELED)))
+                Log.d("speed READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.DISTANCE_TRAVELED))) {
                 dashboard.distance_traveled     = Integer.parseInt(recieved_value);
+                Log.d("distance READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.TURN_SIGNAL))) {
+                dashboard.turn_signal           = Integer.parseInt(recieved_value);
+                Log.d("turn READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LIGHTS))) {
+                dashboard.lights                = Integer.parseInt(recieved_value);
+                Log.d("lights READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.PARKING_BREAK))) {
+                dashboard.parking_brake         = Integer.parseInt(recieved_value);
+                Log.d("handbrake READ", recieved_value); }
+
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.MASTER_WARNING))) {
+                dashboard.master_warning        = Integer.parseInt(recieved_value);
+                Log.d("master warning READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.SEAT_BELT))) {
+                dashboard.seat_belt             = Integer.parseInt(recieved_value);
+                Log.d("seatbelt READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LIGHTS_FAULT))) {
+                dashboard.lights_fault          = Integer.parseInt(recieved_value);
+                Log.d("lights fault READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LOW_WIPER_FLUID))) {
+                dashboard.low_wiper_fluid       = Integer.parseInt(recieved_value);
+                Log.d("low wiper READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LOW_TIRE_PRESSURE))) {
+                dashboard.low_tire_pressure     = Integer.parseInt(recieved_value);
+                Log.d("low tire READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.AIR_BAGS))) {
+                dashboard.air_bags              = Integer.parseInt(recieved_value);
+                Log.d("airbags READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BRAKE_SYSTEM))) {
+                dashboard.brake_system          = Integer.parseInt(recieved_value);
+                Log.d("brake READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.ABS))) {
+                dashboard.abs                   = Integer.parseInt(recieved_value);
+                Log.d("abs READ", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.MOTOR))) {
+                dashboard.motor                 = Integer.parseInt(recieved_value);
+                Log.d("motor READ", recieved_value); }
 
             // updates the GUI on the UI thread
             try { runGUIThread(DEVICE_CONNECTED); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
@@ -236,16 +317,62 @@ public class Display extends AppCompatActivity {
             String recieved_value = new String(characteristic.getValue(), StandardCharsets.UTF_8);
 
             // checks the characteristic passed in against each of the available characteristics then updates the relevant values
-            if (current_char.equals             (dashboard.characteristics.get(dashboard.BATTERY_CHARGE)))
+            if (current_char.equals             (dashboard.characteristics.get(dashboard.BATTERY_CHARGE))) {
                 dashboard.battery_charge        = Integer.parseInt(recieved_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.SPEED)))
+                Log.d("charge CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BATTERY_RANGE))) {
+                dashboard.battery_range         = Integer.parseInt(recieved_value);
+                Log.d("range CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BATTERY_TEMP))) {
+                dashboard.battery_temp          = Integer.parseInt(recieved_value);
+                Log.d("temp CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BATTERY_CHARGE_STATUS))) {
+                dashboard.battery_charge_status = Integer.parseInt(recieved_value);
+                Log.d("status CHANGED", recieved_value); }
+
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.SPEED))) {
                 dashboard.speed                 = Integer.parseInt(recieved_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.TURN_SIGNAL)))
-                dashboard.turn_signal           = Integer.parseInt(recieved_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LIGHTS)))
-                dashboard.lights                = Integer.parseInt(recieved_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.DISTANCE_TRAVELED)))
+                Log.d("speed CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.DISTANCE_TRAVELED))) {
                 dashboard.distance_traveled     = Integer.parseInt(recieved_value);
+                Log.d("distance CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.TURN_SIGNAL))) {
+                dashboard.turn_signal           = Integer.parseInt(recieved_value);
+                Log.d("turn CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LIGHTS))) {
+                dashboard.lights                = Integer.parseInt(recieved_value);
+                Log.d("lights CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.PARKING_BREAK))) {
+                dashboard.parking_brake         = Integer.parseInt(recieved_value);
+                Log.d("handbrake CHANGED", recieved_value); }
+
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.MASTER_WARNING))) {
+                dashboard.master_warning        = Integer.parseInt(recieved_value);
+                Log.d("master warning CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.SEAT_BELT))) {
+                dashboard.seat_belt             = Integer.parseInt(recieved_value);
+                Log.d("seatbelt CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LIGHTS_FAULT))) {
+                dashboard.lights_fault          = Integer.parseInt(recieved_value);
+                Log.d("lights fault CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LOW_WIPER_FLUID))) {
+                dashboard.low_wiper_fluid       = Integer.parseInt(recieved_value);
+                Log.d("low wiper CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LOW_TIRE_PRESSURE))) {
+                dashboard.low_tire_pressure     = Integer.parseInt(recieved_value);
+                Log.d("low tire CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.AIR_BAGS))) {
+                dashboard.air_bags              = Integer.parseInt(recieved_value);
+                Log.d("airbags CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BRAKE_SYSTEM))) {
+                dashboard.brake_system          = Integer.parseInt(recieved_value);
+                Log.d("brake CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.ABS))) {
+                dashboard.abs                   = Integer.parseInt(recieved_value);
+                Log.d("abs CHANGED", recieved_value); }
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.MOTOR))) {
+                dashboard.motor                 = Integer.parseInt(recieved_value);
+                Log.d("motor CHANGED", recieved_value); }
             // updates the GUI on the UI thread
             try { runGUIThread(DEVICE_CONNECTED); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
         }
@@ -317,21 +444,26 @@ public class Display extends AppCompatActivity {
 
                                 iv_indicator_left.setVisibility(View.GONE);
                                 iv_indicator_right.setVisibility(View.GONE);
+                                iv_indicator_left_grey.setVisibility(View.VISIBLE);
+                                iv_indicator_right_grey.setVisibility(View.VISIBLE);
                             }
                             else if (dashboard.turn_signal == 1) {
                                 animation_right.cancel();
                                 iv_indicator_left.startAnimation(animation_left);
 
                                 iv_indicator_left.setVisibility(View.VISIBLE);
+                                iv_indicator_left_grey.setVisibility(View.GONE);
                                 iv_indicator_right.setVisibility(View.GONE);
+                                iv_indicator_right_grey.setVisibility(View.VISIBLE);
                             }
                             else if (dashboard.turn_signal == 2) {
                                 animation_left.cancel();
                                 iv_indicator_right.startAnimation(animation_right);
 
                                 iv_indicator_right.setVisibility(View.VISIBLE);
-
+                                iv_indicator_right_grey.setVisibility(View.GONE);
                                 iv_indicator_left.setVisibility(View.GONE);
+                                iv_indicator_left_grey.setVisibility(View.VISIBLE);
                             }
 
 
@@ -391,8 +523,24 @@ public class Display extends AppCompatActivity {
                                 });
                             }
 
-                            tv_lights.setText(Integer.toString(dashboard.lights));
-                            tv_distance.setText(Integer.toString(dashboard.distance_traveled));
+                            if (dashboard.master_warning == 1) iv_master_warning.setBackgroundResource(R.drawable.placeholder_icon_black);
+                            else iv_master_warning.setBackgroundResource(R.drawable.placeholder_icon_grey);
+                            if (dashboard.seat_belt == 1) iv_seatbelt.setBackgroundResource(R.drawable.placeholder_icon_black);
+                            else iv_seatbelt.setBackgroundResource(R.drawable.placeholder_icon_grey);
+                            if (dashboard.lights_fault == 1) iv_lights_fault.setBackgroundResource(R.drawable.placeholder_icon_black);
+                            else iv_lights_fault.setBackgroundResource(R.drawable.placeholder_icon_grey);
+                            if (dashboard.low_wiper_fluid == 1) iv_low_wiper_fluid.setBackgroundResource(R.drawable.placeholder_icon_black);
+                            else iv_low_wiper_fluid.setBackgroundResource(R.drawable.placeholder_icon_grey);
+                            if (dashboard.low_tire_pressure == 1) iv_low_tire_pressure.setBackgroundResource(R.drawable.placeholder_icon_black);
+                            else iv_low_tire_pressure.setBackgroundResource(R.drawable.placeholder_icon_grey);
+                            if (dashboard.air_bags == 1) iv_airbags.setBackgroundResource(R.drawable.placeholder_icon_black);
+                            else iv_airbags.setBackgroundResource(R.drawable.placeholder_icon_grey);
+                            if (dashboard.brake_system == 1) iv_brake_system.setBackgroundResource(R.drawable.placeholder_icon_black);
+                            else iv_brake_system.setBackgroundResource(R.drawable.placeholder_icon_grey);
+                            if (dashboard.abs == 1) iv_abs.setBackgroundResource(R.drawable.placeholder_icon_black);
+                            else iv_abs.setBackgroundResource(R.drawable.placeholder_icon_grey);
+                            if (dashboard.motor == 1) iv_motor.setBackgroundResource(R.drawable.placeholder_icon_black);
+                            else iv_motor.setBackgroundResource(R.drawable.placeholder_icon_grey);
 
                         }
                     });
