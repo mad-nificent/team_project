@@ -14,6 +14,7 @@ import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
+import android.content.Intent;
 import android.os.ParcelUuid;
 import android.widget.Toast;
 
@@ -147,95 +148,87 @@ public class BluetoothLE
         }
     }
     
-    private void initialiseBluetoothManager()
+    public Boolean setDefaultBluetoothAdapter()
     {
-        bluetoothManager = (BluetoothManager)context.getSystemService(BLUETOOTH_SERVICE);
+        // get instance of the devices bluetooth hardware
+        if (bluetoothManager == null) bluetoothManager = (BluetoothManager)context.getSystemService(BLUETOOTH_SERVICE);
+        if (bluetoothAdapter == null) bluetoothAdapter = bluetoothManager.getAdapter();
+        
+        return bluetoothAdapter.isEnabled();
     }
     
     // begin advertising the device
     public boolean startAdvertising(String UUID)
     {
-        boolean started = false;
+        if (!bluetoothAdapter.isEnabled()) return false;
         
-        initialiseBluetoothManager();
+        // adjust preferences for advertising from this device
+        AdvertiseSettings settings = new AdvertiseSettings.Builder()
+                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY) // consume least amount of power at the cost of higher latency
+                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)     // low power consumption and signal range (client device will be inside vehicle anyway)
+                .setConnectable(true)                                           // devices can connect to subscribe to updates
+                .build();
         
-        // get default bluetooth device
-        bluetoothAdapter = bluetoothManager.getAdapter();
+        // include UUID in advertisement so devices can identify this peripheral
+        AdvertiseData data = new AdvertiseData.Builder()
+                .addServiceUuid(ParcelUuid.fromString(UUID))
+                .build();
         
-        // must be switched on to advertise
-        if (!bluetoothAdapter.isEnabled())
-            showToast("The bluetooth device is disabled. Please enable it and try again.", Toast.LENGTH_LONG);
+        // begin advertising
+        BluetoothLeAdvertiser advertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
+        advertiser.startAdvertising(settings, data, advertiseCallback);
         
-        else
-        {
-            // adjust preferences for advertising from this device
-            AdvertiseSettings settings = new AdvertiseSettings.Builder()
-                    .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)   // consume least amount of power at the cost of higher latency
-                    .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)      // low power consumption and signal range (client device will be inside vehicle anyway)
-                    .setConnectable(true)                                           // devices can connect to subscribe to updates
-                    .build();
-    
-            // include UUID in advertisement so devices can identify this peripheral
-            AdvertiseData data = new AdvertiseData.Builder()
-                    .addServiceUuid(ParcelUuid.fromString(UUID))
-                    .build();
-    
-            // begin advertising
-            BluetoothLeAdvertiser advertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-            advertiser.startAdvertising(settings, data, advertiseCallback);
-    
-            started = true;
-        }
-        
-        return started;
+        return true;
     }
     
     // construct a GATT server with the vehicle service and data to advertise
     public boolean startGATT(String serviceUUID, ArrayList<String> characteristicUUIDS, ArrayList<Integer> data)
     {
-        boolean started = false;
-        
-        if (bluetoothManager == null)
-            showToast("Cannot start GATT server, bluetooth manager not initialised", Toast.LENGTH_LONG);
-        
-        else
+        if (bluetoothManager == null || bluetoothAdapter == null || !bluetoothAdapter.isEnabled())
         {
-            // create GATT server
-            GATTServer = bluetoothManager.openGattServer(context, gattServerCallback);
-    
-            // create new GATT service
-            service = new BluetoothGattService(UUID.fromString(serviceUUID), BluetoothGattService.SERVICE_TYPE_PRIMARY);
-    
-            // add each characteristic to the service
-            int i = 0;
-            for (String cUUID : characteristicUUIDS)
-            {
-                BluetoothGattCharacteristic characteristic = new BluetoothGattCharacteristic(
-                        // UUID (obtained from UUID map)
-                        UUID.fromString(cUUID),
-                
-                        // supported functionality
-                      BluetoothGattCharacteristic.PROPERTY_READ  |
-                                BluetoothGattCharacteristic.PROPERTY_WRITE |
-                                BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-                
-                        // client access
-                        BluetoothGattCharacteristic.PERMISSION_READ);
-        
-                // set starting value
-                characteristic.setValue(Integer.toString(data.get(i)));
-        
-                // save characteristic to service
-                service.addCharacteristic(characteristic);
-                
-                ++i;
-            }
-    
-            GATTServer.addService(service);
-            
-            started = true;
+            showToast("Cannot start GATT server, bluetooth not initialised", Toast.LENGTH_LONG);
+            return false;
         }
         
-        return started;
+        if (GATTServer != null || service != null)
+        {
+            showToast("GATT already running!", Toast.LENGTH_LONG);
+            return false;
+        }
+        
+        // create new GATT server
+        GATTServer = bluetoothManager.openGattServer(context, gattServerCallback);
+
+        // create new GATT service
+        service = new BluetoothGattService(UUID.fromString(serviceUUID), BluetoothGattService.SERVICE_TYPE_PRIMARY);
+
+        // add each characteristic to the service
+        int i = 0;
+        for (String cUUID : characteristicUUIDS)
+        {
+            BluetoothGattCharacteristic characteristic = new BluetoothGattCharacteristic(
+                    // UUID (obtained from UUID map)
+                    UUID.fromString(cUUID),
+            
+                    // supported functionality
+                  BluetoothGattCharacteristic.PROPERTY_READ  |
+                            BluetoothGattCharacteristic.PROPERTY_WRITE |
+                            BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+            
+                    // client access
+                    BluetoothGattCharacteristic.PERMISSION_READ);
+    
+            // set starting value
+            characteristic.setValue(Integer.toString(data.get(i)));
+    
+            // save characteristic to service
+            service.addCharacteristic(characteristic);
+            
+            ++i;
+        }
+
+        GATTServer.addService(service);
+        
+        return true;
     }
 }

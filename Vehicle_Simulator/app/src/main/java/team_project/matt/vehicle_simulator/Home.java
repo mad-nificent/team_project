@@ -1,5 +1,7 @@
 package team_project.matt.vehicle_simulator;
 
+import android.bluetooth.BluetoothAdapter;
+import android.content.Intent;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -19,8 +21,8 @@ public class Home
     VehicleService vehicleService;
     
     // location permission required for BLE to work
-    final int   REQUEST_CODE_LOCATION = 1;
-    boolean     hasLocationPermission = false;      // write this to shared prefs later
+    final int          REQUEST_CODE_LOCATION = 1;
+    final int REQUEST_CODE_BLUETOOTH_ENABLED = 2;
     
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -28,14 +30,18 @@ public class Home
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
         
+        requestPermissions();   // will close down if permission denied
+        startBluetoothDevice();
+    }
+    
+    private void requestPermissions()
+    {
         // does the app have location permissions?
         int currentLocationPermission = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION);
-        
+    
         // no, request the permission from the user
         if (currentLocationPermission != PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_CODE_LOCATION);
-        
-        initialiseVehicle();
     }
     
     @Override
@@ -58,47 +64,84 @@ public class Home
         }
     }
     
-    public void initialiseVehicle()
+    public void startBluetoothDevice()
     {
-        hasLocationPermission = true;
         vehicleService = new VehicleService(new BluetoothLE(getApplicationContext()));
+        
+        // start bluetooth hardware in app, returns false if bluetooth off
+        if (!vehicleService.bluetoothLE.setDefaultBluetoothAdapter())
+        {
+            // request bluetooth be turned on
+            Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(intent, REQUEST_CODE_BLUETOOTH_ENABLED);
+        }
+        
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data)
+    {
+        switch(requestCode)
+        {
+            case REQUEST_CODE_BLUETOOTH_ENABLED:
+            {
+                if (resultCode != RESULT_OK)
+                {
+                    Toast toast = Toast.makeText(this, "App requires bluetooth to function.", Toast.LENGTH_LONG);
+                    toast.show();
+                }
+    
+                break;
+            }
+        }
     }
     
     // starts the server and advertising process
     public void onStartServerClick(View view)
     {
-        if (hasLocationPermission)
-        {
-            if (vehicleService.bluetoothLE.startAdvertising(vehicleService.getUUID()))
-            {
-                if (vehicleService.bluetoothLE.startGATT(vehicleService.getUUID(), vehicleService.getCharacteristicUUIDs(), vehicleService.getCharacteristicFormats()))
-                {
-                    setContentView(R.layout.prototype_interface);
-                    
-                    vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(100);
-                    vehicleService.getCharacteristic(VehicleService.Property.RANGE).setData(0);                             //get from shared prefs later
-                    vehicleService.getCharacteristic(VehicleService.Property.CHARGING).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData(20);                     // safe temp 20-45c
+        // start advertising, returns false if bluetooth disabled
+        if (!vehicleService.bluetoothLE.startAdvertising(vehicleService.getUUID()))
+            return;
+        
+        // start GATT, returns false if already started
+        if (!vehicleService.bluetoothLE.startGATT(vehicleService.getUUID(), vehicleService.getCharacteristicUUIDs(), vehicleService.getCharacteristicFormats()))
+            return;
+        
+        vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(100);
+        vehicleService.getCharacteristic(VehicleService.Property.RANGE).setData(0);                             //get from shared prefs later
+        vehicleService.getCharacteristic(VehicleService.Property.CHARGING).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData(20);                     // safe temp 20-45c
+        vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(0);
+        vehicleService.getCharacteristic(VehicleService.Property.RPM).setData(0);
+        vehicleService.getCharacteristic(VehicleService.Property.DISTANCE).setData(0);
+        vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.HANDBRAKE).setData(vehicleService.STATE_ON);
+        vehicleService.getCharacteristic(VehicleService.Property.WARNING).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.SEATBELT).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.LIGHTS_ERR).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.ABS_ERR).setData(vehicleService.STATE_OFF);
+        vehicleService.getCharacteristic(VehicleService.Property.ENGIN_ERR).setData(vehicleService.STATE_OFF);
+        
+        loadVehicleInterface();
+    }
     
-                    vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(0);
-                    vehicleService.getCharacteristic(VehicleService.Property.RPM).setData(0);
-                    vehicleService.getCharacteristic(VehicleService.Property.DISTANCE).setData(0);
-                    vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.HANDBRAKE).setData(vehicleService.STATE_ON);
+    private void loadVehicleInterface()
+    {
+        setContentView(R.layout.prototype_interface);
+        
+        EditText battery = findViewById(R.id.txtBattery);
+        EditText speed   = findViewById(R.id.txtSpeed);
     
-                    vehicleService.getCharacteristic(VehicleService.Property.WARNING).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.SEATBELT).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.LIGHTS_ERR).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.ABS_ERR).setData(vehicleService.STATE_OFF);
-                    vehicleService.getCharacteristic(VehicleService.Property.ENGIN_ERR).setData(vehicleService.STATE_OFF);
-                }
-            }
-        }
+        VehicleService.Characteristic batteryData = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL);
+        battery.setText(String.format(Locale.getDefault(), "%d", batteryData.getData()));
+    
+        VehicleService.Characteristic speedData = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
+        speed.setText(String.format(Locale.getDefault(), "%d", speedData.getData()));
     }
     
     // update all modified data and send out a notification
@@ -189,7 +232,7 @@ public class Home
         if (turnSignal.getData() == vehicleService.STATE_SIGNAL_LEFT)
             turnSignal.setData(vehicleService.STATE_OFF);
             
-            // toggle on
+        // toggle on
         else turnSignal.setData(vehicleService.STATE_SIGNAL_LEFT);
     }
     
@@ -202,7 +245,7 @@ public class Home
         if (turnSignal.getData() == vehicleService.STATE_SIGNAL_RIGHT)
             turnSignal.setData(vehicleService.STATE_OFF);
             
-            // toggle on
+        // toggle on
         else turnSignal.setData(vehicleService.STATE_SIGNAL_RIGHT);
     }
 }
