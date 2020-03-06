@@ -299,6 +299,22 @@ public class VehicleService
     {
         return characteristics;
     }
+
+    public ArrayList<Characteristic> getWarnings()
+    {
+        ArrayList<Characteristic> warnings = new ArrayList<>();
+
+        warnings.add(getCharacteristic(Property.SEATBELT));
+        warnings.add(getCharacteristic(Property.LIGHTS_ERR));
+        warnings.add(getCharacteristic(Property.WIPER_LOW));
+        warnings.add(getCharacteristic(Property.TYRE_PRESSURE_LOW));
+        warnings.add(getCharacteristic(Property.AIRBAG_ERR));
+        warnings.add(getCharacteristic(Property.BRAKE_ERR));
+        warnings.add(getCharacteristic(Property.ABS_ERR));
+        warnings.add(getCharacteristic(Property.ENGIN_ERR));
+
+        return warnings;
+    }
     
     public ArrayList<String> getCharacteristicUUIDs()
     {

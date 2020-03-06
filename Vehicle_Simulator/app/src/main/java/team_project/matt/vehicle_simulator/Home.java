@@ -2,6 +2,7 @@ package team_project.matt.vehicle_simulator;
 
 import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
+import android.graphics.Color;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -11,6 +12,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.Locale;
 
 public class Home
@@ -145,81 +147,157 @@ public class Home
     }
     
     // update all modified data and send out a notification
-    public void onUpdateClick(View view)
+    public void onChargeClick(View view)
     {
-        EditText txtBatteryLevel = findViewById(R.id.txtBattery);
-        EditText txtSpeed        = findViewById(R.id.txtSpeed);
-        
-        VehicleService.Characteristic battery = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL);
-        VehicleService.Characteristic speed   = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
-        
-        // dont send blank string
-        if (txtBatteryLevel.getText().toString().equals("")) txtBatteryLevel.setText("0");
-        if (txtSpeed.getText().toString().equals(""))        txtSpeed.setText("0");
-        
-        // update values
-        battery.setData(Integer.parseInt(txtBatteryLevel.getText().toString()));
-        speed.setData(Integer.parseInt(txtSpeed.getText().toString()));
+        VehicleService.Characteristic charge = vehicleService.getCharacteristic(VehicleService.Property.CHARGING);
+
+        if (charge.getData() == vehicleService.STATE_OFF)
+        {
+            charge.setData(vehicleService.STATE_ON);
+            view.setBackgroundColor(Color.rgb(0, 255, 0));
+        }
+
+        else
+        {
+            charge.setData(vehicleService.STATE_OFF);
+            view.setBackgroundColor(Color.rgb(255, 0, 0));
+        }
     }
     
     public void onMinusClick(View view)
     {
-        EditText txtView;
-        VehicleService.Characteristic characteristic;
-        
-        if (view.getId() == R.id.btnDecreaseBattery)
+        EditText txtView = null;
+        VehicleService.Characteristic characteristic = null;
+
+        int ID = view.getId();
+        switch (ID)
         {
-            txtView = findViewById(R.id.txtBattery);
-            characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL);
+            case R.id.btnDecreaseBattery:
+            {
+                txtView = findViewById(R.id.txtBattery);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL);
+                break;
+            }
+
+            case R.id.btnDecreaseRange:
+            {
+                txtView = findViewById(R.id.txtRange);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.RANGE);
+                break;
+            }
+
+            case R.id.btnDecreaseTemp:
+            {
+                txtView = findViewById(R.id.txtTemp);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP);
+                break;
+            }
+
+            case R.id.btnDecreaseSpeed:
+            {
+                txtView = findViewById(R.id.txtSpeed);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
+                break;
+            }
+
+            case R.id.btnDecreaseRPM:
+            {
+                txtView = findViewById(R.id.txtRPM);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.RPM);
+                break;
+            }
+
+            case R.id.btnDecreaseDistance:
+            {
+                txtView = findViewById(R.id.txtDistance);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.DISTANCE);
+                break;
+            }
         }
-        
-        else if (view.getId() == R.id.btnDecreaseSpeed)
+
+        if (characteristic != null && txtView != null)
         {
-            txtView = findViewById(R.id.txtSpeed);
-            characteristic = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
-        }
-        
-        else return;
-        
-        int data = characteristic.getData();
-        if (data > 0)
-        {
-            data -= 1;
-            // update text view and characteristic
-            txtView.setText(String.format(Locale.getDefault(), "%d", data));
-            characteristic.setData(data);
+            int data = characteristic.getData();
+            if (data > 0)
+            {
+                data -= 1;
+
+                // update text view and characteristic
+                txtView.setText(String.format(Locale.getDefault(), "%d", data));
+                characteristic.setData(data);
+            }
         }
     }
     
     public void onPlusClick(View view)
     {
-        EditText txtView;
-        VehicleService.Characteristic characteristic;
+        EditText txtView = null;
+        VehicleService.Characteristic characteristic = null;
         int max = 0;
-        
-        if (view.getId() == R.id.btnIncreaseBattery)
+
+        int ID = view.getId();
+        switch (ID)
         {
-            txtView = findViewById(R.id.txtBattery);
-            characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL);
-            max = 100;
+            case R.id.btnIncreaseBattery:
+            {
+                txtView = findViewById(R.id.txtBattery);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL);
+                max = 100;
+                break;
+            }
+
+            case R.id.btnIncreaseRange:
+            {
+                txtView = findViewById(R.id.txtRange);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.RANGE);
+                max = 500;
+                break;
+            }
+
+            case R.id.btnIncreaseTemp:
+            {
+                txtView = findViewById(R.id.txtTemp);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP);
+                max = 100;
+                break;
+            }
+
+            case R.id.btnIncreaseSpeed:
+            {
+                txtView = findViewById(R.id.txtSpeed);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
+                max = 120;
+                break;
+            }
+
+            case R.id.btnIncreaseRPM:
+            {
+                txtView = findViewById(R.id.txtRPM);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.RPM);
+                max = 4000;
+                break;
+            }
+
+            case R.id.btnIncreaseDistance:
+            {
+                txtView = findViewById(R.id.txtDistance);
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.DISTANCE);
+                max = Integer.MAX_VALUE;
+                break;
+            }
         }
-        
-        else if (view.getId() == R.id.btnIncreaseSpeed)
+
+        if (characteristic != null && txtView != null)
         {
-            txtView = findViewById(R.id.txtSpeed);
-            characteristic = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
-            max = 120;
-        }
-        
-        else return;
-    
-        int data = characteristic.getData();
-        if (data < max)
-        {
-            data += 1;
-            // update text view and characteristic
-            txtView.setText(String.format(Locale.getDefault(), "%d", data));
-            characteristic.setData(data);
+            int data = characteristic.getData();
+            if (data < max)
+            {
+                data += 1;
+
+                // update text view and characteristic
+                txtView.setText(String.format(Locale.getDefault(), "%d", data));
+                characteristic.setData(data);
+            }
         }
     }
     
@@ -229,11 +307,26 @@ public class Home
         VehicleService.Characteristic turnSignal = vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL);
         
         // toggle off
-        if (turnSignal.getData() == vehicleService.STATE_SIGNAL_LEFT)
-            turnSignal.setData(vehicleService.STATE_OFF);
+        if (turnSignal.getData() == vehicleService.STATE_SIGNAL_LEFT) turnSignal.setData(vehicleService.STATE_OFF);
             
         // toggle on
         else turnSignal.setData(vehicleService.STATE_SIGNAL_LEFT);
+    }
+
+    public void onLightsClick(View view)
+    {
+        VehicleService.Characteristic lights = vehicleService.getCharacteristic(VehicleService.Property.LIGHTS);
+
+        if      (lights.getData() == vehicleService.STATE_OFF)        lights.setData(vehicleService.STATE_LIGHTS_LOW);
+        else if (lights.getData() == vehicleService.STATE_LIGHTS_LOW) lights.setData(vehicleService.STATE_LIGHTS_HIGH);
+        else                                                          lights.setData(vehicleService.STATE_OFF);
+    }
+
+    public void onBrakeClick(View view)
+    {
+        VehicleService.Characteristic brake = vehicleService.getCharacteristic(VehicleService.Property.HANDBRAKE);
+        if (brake.getData() == vehicleService.STATE_OFF) brake.setData(vehicleService.STATE_ON);
+        else                                             brake.setData(vehicleService.STATE_OFF);
     }
     
     // turn on right indicator
@@ -247,5 +340,120 @@ public class Home
             
         // toggle on
         else turnSignal.setData(vehicleService.STATE_SIGNAL_RIGHT);
+    }
+
+    public void onWarningClick(View view)
+    {
+        VehicleService.Characteristic characteristic = null;
+        boolean isMultiState = false;
+
+        int ID = view.getId();
+        switch (ID)
+        {
+            case R.id.btnSeatbeltWarning:
+            {
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.SEATBELT);
+                break;
+            }
+
+            case R.id.btnLightsWarning:
+            {
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.LIGHTS_ERR);
+                break;
+            }
+
+            case R.id.btnWiperWarning:
+            {
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW);
+                isMultiState = true;
+                break;
+            }
+
+            case R.id.btnTyresWarning:
+            {
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW);
+                isMultiState = true;
+                break;
+            }
+
+            case R.id.btnAirbagWarning:
+            {
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.AIRBAG_ERR);
+                break;
+            }
+
+            case R.id.btnBrakeWarning:
+            {
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.BRAKE_ERR);
+                break;
+            }
+
+            case R.id.btnAbsWarning:
+            {
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.ABS_ERR);
+                isMultiState = true;
+                break;
+            }
+
+            case R.id.btnEngineWarning:
+            {
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.ENGIN_ERR);
+                isMultiState = true;
+                break;
+            }
+        }
+
+        if (characteristic != null)
+        {
+            VehicleService.Characteristic masterWarning = vehicleService.getCharacteristic(VehicleService.Property.WARNING);
+
+            if (characteristic.getData() == vehicleService.STATE_OFF)
+            {
+                // if master warning off, turn on
+                if (masterWarning.getData() == vehicleService.STATE_OFF) masterWarning.setData(vehicleService.STATE_ON);
+
+                characteristic.setData(vehicleService.STATE_WARNING_LOW);
+            }
+
+            else if (characteristic.getData() == vehicleService.STATE_WARNING_LOW)
+            {
+                if (isMultiState) characteristic.setData(vehicleService.STATE_WARNING_HIGH);
+                else
+                {
+                    characteristic.setData(vehicleService.STATE_OFF);
+
+                    boolean isFinal = true;
+                    ArrayList<VehicleService.Characteristic> warnings = vehicleService.getWarnings();
+
+                    // see if other warnings are still enabled
+                    for (int i = 0; i < warnings.size() && isFinal; ++i)
+                    {
+                        if (warnings.get(i).getData() == vehicleService.STATE_WARNING_LOW ||
+                                warnings.get(i).getData() == vehicleService.STATE_WARNING_HIGH)
+                            isFinal = false;
+                    }
+
+                    if (isFinal) masterWarning.setData(vehicleService.STATE_OFF);
+                }
+            }
+
+            else if (characteristic.getData() == vehicleService.STATE_WARNING_HIGH)
+            {
+                characteristic.setData(vehicleService.STATE_OFF);
+
+                boolean isFinal = true;
+                ArrayList<VehicleService.Characteristic> warnings = vehicleService.getWarnings();
+
+                // see if other warnings are still enabled
+                for (int i = 0; i < warnings.size() && isFinal; ++i)
+                {
+                    if (warnings.get(i).getData() == vehicleService.STATE_WARNING_LOW ||
+                            warnings.get(i).getData() == vehicleService.STATE_WARNING_HIGH)
+                        isFinal = false;
+                }
+
+                if (isFinal) masterWarning.setData(vehicleService.STATE_OFF);
+            }
+        }
     }
 }
