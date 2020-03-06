@@ -90,7 +90,7 @@
         android:layout_marginStart="5dp"
         android:layout_marginTop="6dp"
         android:layout_toEndOf="@+id/iv_air_bag_fault"
-        android:src="@drawable/handbrake_warning_grey" />
+        android:src="@drawable/brake_warning_grey" />
 
     <ImageView
         android:id="@+id/iv_abs"
