@@ -365,14 +365,12 @@ public class Home
             case R.id.btnWiperWarning:
             {
                 characteristic = vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW);
-                isMultiState = true;
                 break;
             }
 
             case R.id.btnTyresWarning:
             {
                 characteristic = vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW);
-                isMultiState = true;
                 break;
             }
 
@@ -385,6 +383,7 @@ public class Home
             case R.id.btnBrakeWarning:
             {
                 characteristic = vehicleService.getCharacteristic(VehicleService.Property.BRAKE_ERR);
+                isMultiState = true;
                 break;
             }
 

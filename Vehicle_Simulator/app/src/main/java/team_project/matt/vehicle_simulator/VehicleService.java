@@ -77,7 +77,7 @@ public class VehicleService
                 // update characteristic on service and notify change
                 BluetoothGattCharacteristic characteristic = bluetoothLE.service.getCharacteristic(java.util.UUID.fromString(this.UUID));
     
-                characteristic.setValue(Integer.toString(data));
+                characteristic.setValue(Integer.toString(this.data));
     
                 for (int i = 0; i < bluetoothLE.devices.size(); ++i)
                     bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), characteristic, false);
