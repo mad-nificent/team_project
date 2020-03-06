@@ -23,148 +23,184 @@
 
     <ImageView
         android:id="@+id/iv_master_warning"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:layout_marginStart="5dp"
         android:layout_marginTop="5dp"
-        android:src="@drawable/placeholder_icon_grey"/>
+        android:src="@drawable/master_warning_grey"/>
 
 
     <ImageView
         android:id="@+id/iv_seatbelt"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="0dp"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="6dp"
         android:layout_toEndOf="@+id/iv_master_warning"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:src="@drawable/seatbelt_warning_grey" />
 
     <ImageView
         android:id="@+id/iv_lights_fault"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="0dp"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="6dp"
         android:layout_toEndOf="@+id/iv_seatbelt"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:src="@drawable/lights_fault_grey" />
 
     <ImageView
         android:id="@+id/iv_low_wiper_fluid"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="0dp"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="6dp"
         android:layout_toEndOf="@+id/iv_lights_fault"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:src="@drawable/low_wiper_fluid_grey" />
 
     <ImageView
         android:id="@+id/iv_low_tire_pressure"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="0dp"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="6dp"
         android:layout_toEndOf="@+id/iv_low_wiper_fluid"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:src="@drawable/low_tire_pressure_grey" />
 
     <ImageView
         android:id="@+id/iv_air_bag_fault"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="0dp"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="6dp"
         android:layout_toEndOf="@+id/iv_low_tire_pressure"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:src="@drawable/airbag_fault_grey" />
 
     <ImageView
         android:id="@+id/iv_brakes"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="0dp"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="6dp"
         android:layout_toEndOf="@+id/iv_air_bag_fault"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:src="@drawable/handbrake_warning_grey" />
 
     <ImageView
         android:id="@+id/iv_abs"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="0dp"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="6dp"
         android:layout_toEndOf="@+id/iv_brakes"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:src="@drawable/abs_fault_grey" />
 
     <ImageView
         android:id="@+id/iv_motor"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="0dp"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="6dp"
         android:layout_toEndOf="@+id/iv_abs"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:src="@drawable/electric_drive_system_fault_grey" />
 
     <ImageView
         android:id="@+id/iv_handbrake"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_alignParentTop="true"
         android:layout_marginStart="5dp"
-        android:layout_marginTop="100dp"
-        android:layout_marginEnd="5dp"
-        android:layout_toStartOf="@+id/iv_gauge_battery"
-        android:layout_toEndOf="@+id/iv_gauge_speed"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_battery_temp"
+        android:src="@drawable/parking_brake_grey" />
+
+    <ImageView
+        android:id="@+id/iv_battery_temp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_motor"
+        android:src="@drawable/temp_grey" />
 
     <ImageView
         android:id="@+id/iv_light_intensity"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_below="@+id/iv_handbrake"
+        android:layout_alignParentTop="true"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_marginStart="5dp"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_handbrake"
+        android:src="@drawable/no_lightbeam_grey" />
+
+    <TextView
+        android:id="@+id/txt_distance_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="60dp"
         android:layout_marginEnd="5dp"
         android:layout_toStartOf="@+id/iv_gauge_battery"
         android:layout_toEndOf="@+id/iv_gauge_speed"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:text="Distance"
+        android:textAlignment="center"
+        android:fontFamily="sans-serif-light"
+        android:textSize="15sp"/>
 
     <TextView
-        android:id="@+id/iv_distance"
+        android:id="@+id/txt_distance"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentBottom="true"
+        android:layout_below="@+id/txt_distance_title"
         android:layout_marginStart="5dp"
-        android:layout_marginBottom="5dp"
-        android:text="Distance Traveled"/>
+        android:layout_marginTop="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_toStartOf="@+id/iv_gauge_battery"
+        android:layout_toEndOf="@+id/iv_gauge_speed"
+        android:text="0"
+        android:textAlignment="center"
+        android:fontFamily="sans-serif-light"
+        android:textSize="15sp"/>
 
     <TextView
-        android:id="@+id/iv_battery_range"
+        android:id="@+id/txt_battery_range_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginEnd = "5dp"
-        android:layout_marginBottom="5dp"
-        android:text="Battery Range Left"/>
+        android:layout_below="@+id/txt_distance"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="29dp"
+        android:layout_marginEnd="4dp"
+        android:layout_toStartOf="@+id/iv_gauge_battery"
+        android:layout_toEndOf="@+id/iv_gauge_speed"
+        android:text="Range"
+        android:textAlignment="center"
+        android:fontFamily="sans-serif-light"
+        android:textSize="15sp"/>
 
     <TextView
-        android:id="@+id/iv_battery_temp"
+        android:id="@+id/txt_battery_range"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="5dp"
-        android:layout_toStartOf="@+id/iv_battery_range"
-        android:text="0°C" />
+        android:layout_below="@+id/txt_battery_range_title"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginEnd="4dp"
+        android:layout_toStartOf="@+id/iv_gauge_battery"
+        android:layout_toEndOf="@+id/iv_gauge_speed"
+        android:fontFamily="sans-serif-light"
+        android:text="0"
+        android:textAlignment="center"
+        android:textSize="15sp" />
 
     <ImageView
         android:id="@+id/iv_charging"
@@ -173,8 +209,8 @@
         android:layout_below="@+id/btn_retry_connection"
         android:layout_alignParentEnd="true"
         android:layout_marginTop="5dp"
-        android:layout_marginEnd="5dp"
-        android:src="@drawable/placeholder_icon_grey" />
+        android:layout_marginEnd="0dp"
+        android:src="@drawable/charging_icon_grey" />
 
     <TextView
         android:id="@+id/text_connected"
@@ -210,8 +246,8 @@
         android:layout_height="300dp"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="5dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="-10dp"
         android:src="@drawable/gauge_new_speed" />
 
     <ImageView
@@ -235,8 +271,8 @@
         android:layout_height="300dp"
         android:layout_alignParentEnd="true"
         android:layout_alignParentTop="true"
-        android:layout_marginEnd="10dp"
-        android:layout_marginTop="5dp"
+        android:layout_marginEnd="5dp"
+        android:layout_marginTop="-10dp"
         android:src="@drawable/gauge_new_battery" />
 
     <ImageView
@@ -255,29 +291,29 @@
         android:contentDescription="@string/app_name"/>
 
     <ImageView
-    android:id="@+id/img_indicator_right"
-    android:layout_width="116dp"
-    android:layout_height="89dp"
-    android:layout_alignParentStart="true"
-    android:layout_alignParentEnd="true"
-    android:layout_alignParentBottom="true"
-    android:layout_marginStart="500dp"
-    android:layout_marginEnd="30dp"
-    android:layout_marginBottom="25dp"
-    android:animateLayoutChanges="true"
-    android:src="@drawable/right_indicator_green"
-    android:visibility="gone"/>
+        android:id="@+id/img_indicator_right"
+        android:layout_width="116dp"
+        android:layout_height="70dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="500dp"
+        android:layout_marginEnd="30dp"
+        android:layout_marginBottom="20dp"
+        android:animateLayoutChanges="true"
+        android:src="@drawable/right_indicator_green"
+        android:visibility="gone"/>
 
     <ImageView
         android:id="@+id/img_indicator_left"
         android:layout_width="116dp"
-        android:layout_height="89dp"
+        android:layout_height="70dp"
         android:layout_alignParentStart="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
         android:layout_marginStart="30dp"
         android:layout_marginEnd="500dp"
-        android:layout_marginBottom="25dp"
+        android:layout_marginBottom="20dp"
         android:animateLayoutChanges="true"
         android:src="@drawable/left_indicator_green"
         android:visibility="gone"/>
@@ -285,26 +321,26 @@
     <ImageView
         android:id="@+id/img_indicator_right_grey"
         android:layout_width="116dp"
-        android:layout_height="89dp"
+        android:layout_height="70dp"
         android:layout_alignParentStart="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
         android:layout_marginStart="500dp"
         android:layout_marginEnd="30dp"
-        android:layout_marginBottom="25dp"
+        android:layout_marginBottom="20dp"
         android:animateLayoutChanges="true"
         android:src="@drawable/right_indicator_grey" />
 
     <ImageView
         android:id="@+id/img_indicator_left_grey"
         android:layout_width="116dp"
-        android:layout_height="89dp"
+        android:layout_height="70dp"
         android:layout_alignParentStart="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
         android:layout_marginStart="30dp"
         android:layout_marginEnd="500dp"
-        android:layout_marginBottom="25dp"
+        android:layout_marginBottom="20dp"
         android:animateLayoutChanges="true"
         android:src="@drawable/left_indicator_grey" />
 
@@ -314,28 +350,24 @@
         android:layout_height="wrap_content"
         android:layout_alignStart="@+id/iv_gauge_speed"
         android:layout_alignTop="@+id/iv_gauge_speed"
-        android:layout_alignEnd="@+id/iv_gauge_speed"
         android:layout_alignBottom="@+id/iv_gauge_speed"
-        android:layout_marginStart="80dp"
+        android:layout_marginStart="110dp"
         android:layout_marginTop="220dp"
-        android:layout_marginEnd="80dp"
         android:layout_marginBottom="10dp"
         android:fontFamily="sans-serif-light"
         android:text="0"
         android:textAlignment="center"
-        android:textSize="40sp"/>
+        android:textSize="40sp" />
 
     <TextView
         android:layout_width="43dp"
         android:layout_height="38dp"
-        android:layout_alignStart="@+id/tv_speed"
         android:layout_alignTop="@+id/tv_speed"
-        android:layout_alignEnd="@+id/tv_speed"
         android:layout_alignBottom="@+id/tv_speed"
-        android:layout_marginStart="140dp"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="25dp"
-        android:layout_marginEnd="-43dp"
         android:layout_marginBottom="2dp"
+        android:layout_toEndOf="@+id/tv_speed"
         android:fontFamily="sans-serif-light"
         android:text="mph"
         android:textAlignment="center"
@@ -347,30 +379,26 @@
         android:layout_height="wrap_content"
         android:layout_alignStart="@+id/iv_gauge_battery"
         android:layout_alignTop="@+id/iv_gauge_battery"
-        android:layout_alignEnd="@+id/iv_gauge_battery"
         android:layout_alignBottom="@+id/iv_gauge_battery"
-        android:layout_marginStart="80dp"
+        android:layout_marginStart="110dp"
         android:layout_marginTop="220dp"
-        android:layout_marginEnd="80dp"
         android:layout_marginBottom="10dp"
         android:fontFamily="sans-serif-light"
         android:text="0"
         android:textAlignment="center"
-        android:textSize="40sp"/>
+        android:textSize="40sp" />
 
     <TextView
         android:layout_width="43dp"
         android:layout_height="38dp"
-        android:layout_alignStart="@+id/tv_battery"
         android:layout_alignTop="@+id/tv_battery"
-        android:layout_alignEnd="@+id/tv_battery"
         android:layout_alignBottom="@+id/tv_battery"
-        android:layout_marginStart="140dp"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="25dp"
-        android:layout_marginEnd="-43dp"
         android:layout_marginBottom="2dp"
+        android:layout_toEndOf="@+id/tv_battery"
         android:fontFamily="sans-serif-light"
         android:text="%"
         android:textAlignment="center"
-        android:textSize="30sp" />
+        android:textSize="25sp" />
 </RelativeLayout>
