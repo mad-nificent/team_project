@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattServerCallback;
 import android.bluetooth.BluetoothGattService;
@@ -182,7 +183,7 @@ public class BluetoothLE
     }
     
     // construct a GATT server with the vehicle service and data to advertise
-    public boolean startGATT(String serviceUUID, ArrayList<String> characteristicUUIDS, ArrayList<Integer> data)
+    public boolean startGATT(String serviceUUID, ArrayList<String> characteristicUUIDS, ArrayList<Integer> data, String descriptor)
     {
         if (bluetoothManager == null || bluetoothAdapter == null || !bluetoothAdapter.isEnabled())
         {
@@ -220,7 +221,9 @@ public class BluetoothLE
     
             // set starting value
             characteristic.setValue(Integer.toString(data.get(i)));
-    
+
+            characteristic.addDescriptor(new BluetoothGattDescriptor(UUID.fromString(descriptor), BluetoothGattDescriptor.PERMISSION_READ));
+
             // save characteristic to service
             service.addCharacteristic(characteristic);
             
