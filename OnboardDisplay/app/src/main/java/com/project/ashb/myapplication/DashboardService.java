@@ -30,7 +30,7 @@ public class DashboardService {
     /* ------ BATTERY ------ */
     final int BATTERY_CHARGE = 0, BATTERY_RANGE = 1, BATTERY_CHARGE_STATUS = 2, BATTERY_TEMP = 3;
     /* ------ CAR STATE ------ */
-    final int SPEED  = 4, DISTANCE_TRAVELED = 5, TURN_SIGNAL  = 6, LIGHTS = 7, PARKING_BREAK = 8;
+    final int SPEED  = 4, DISTANCE_TRAVELED = 5, TURN_SIGNAL  = 6, LIGHTS = 7, PARKING_BRAKE = 8;
     /* ------ WARNINGS ------ */
     final int MASTER_WARNING = 9, SEAT_BELT = 10, LIGHTS_FAULT = 11, LOW_WIPER_FLUID = 12, LOW_TIRE_PRESSURE  = 13, AIR_BAGS = 14, BRAKE_SYSTEM = 15, ABS = 16, ELECTRIC_DRIVE_SYSTEM = 17;
 
@@ -45,7 +45,7 @@ public class DashboardService {
         put(DISTANCE_TRAVELED,      "5bebe839-c2e2-4fad-bb18-65f792ddb16f");    // distance traveled
         put(TURN_SIGNAL,            "74df0c8f-f3e1-4cf5-b875-56d7ca609a2e");    // turn signal
         put(LIGHTS,                 "131223c4-1e5f-486a-9ab5-d85c41984f6f");    // lights
-        put(PARKING_BREAK,          "f05976f6-aa9e-4d19-a255-aeda7dbb624f");    // parking brake enabled
+        put(PARKING_BRAKE,          "f05976f6-aa9e-4d19-a255-aeda7dbb624f");    // parking brake enabled
         put(MASTER_WARNING,         "9d5a5763-38a0-4eb6-83b6-0a5da1270266");    // master warning
         put(SEAT_BELT,              "da2d9231-ae69-4b5b-b4dc-d7c940e72815");    // seat belt
         put(LIGHTS_FAULT,           "ae86ebf4-b0ef-42ff-9dd2-0f15fb441b2f");    // lights fault

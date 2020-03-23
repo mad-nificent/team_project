@@ -43,23 +43,13 @@
         android:src="@drawable/seatbelt_warning_grey" />
 
     <ImageView
-        android:id="@+id/iv_lights_fault"
-        android:layout_width="30dp"
-        android:layout_height="30dp"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="5dp"
-        android:layout_marginTop="6dp"
-        android:layout_toEndOf="@+id/iv_seatbelt"
-        android:src="@drawable/lights_fault_grey" />
-
-    <ImageView
         android:id="@+id/iv_low_wiper_fluid"
         android:layout_width="30dp"
         android:layout_height="30dp"
         android:layout_alignParentTop="true"
         android:layout_marginStart="5dp"
         android:layout_marginTop="6dp"
-        android:layout_toEndOf="@+id/iv_lights_fault"
+        android:layout_toEndOf="@+id/iv_seatbelt"
         android:src="@drawable/low_wiper_fluid_grey" />
 
     <ImageView
@@ -142,6 +132,16 @@
         android:layout_toEndOf="@+id/iv_handbrake"
         android:src="@drawable/no_lightbeam_grey" />
 
+    <ImageView
+        android:id="@+id/iv_connected"
+        android:layout_alignParentTop="true"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="6dp"
+        android:layout_toEndOf="@+id/iv_light_intensity"
+        android:src="@drawable/connection_grey" />
+
     <TextView
         android:id="@+id/txt_distance_title"
         android:layout_width="wrap_content"
@@ -202,37 +202,11 @@
         android:textAlignment="center"
         android:textSize="15sp" />
 
-    <ImageView
-        android:id="@+id/iv_charging"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_below="@+id/btn_retry_connection"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="5dp"
-        android:layout_marginEnd="0dp"
-        android:src="@drawable/charging_icon_grey" />
-
-    <TextView
-        android:id="@+id/text_connected"
-        android:layout_width="120dp"
-        android:layout_height="wrap_content"
-        android:layout_columnWeight="1"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:layout_gravity="fill_horizontal"
-        android:layout_marginEnd="0dp"
-        android:layout_marginTop="0dp"
-        android:fontFamily="sans-serif-light"
-        android:text="Connecting..."
-        android:textAlignment="center"
-        android:textSize="15sp" />
-
     <Button
         android:id="@+id/btn_retry_connection"
         android:text="Retry Connection"
         android:layout_width="120dp"
         android:layout_height="35dp"
-        android:layout_below="@+id/text_connected"
         android:layout_alignParentEnd="true"
         android:fontFamily="sans-serif-light"
         android:textAllCaps="false"

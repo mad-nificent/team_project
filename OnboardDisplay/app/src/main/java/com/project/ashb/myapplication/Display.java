@@ -43,17 +43,15 @@ public class Display extends AppCompatActivity {
     ImageView   iv_gauge_speed;
     ImageView   iv_gauge_battery;
     ImageView   iv_needle_battery;
+    ImageView iv_connected;
 
     ImageView iv_battery_temp;
     ImageView iv_parking_brake;
     ImageView iv_lights;
     TextView txt_range;
     TextView txt_distance;
-    ImageView iv_charging;
 
-    ImageView   iv_master_warning;
     ImageView   iv_seatbelt;
-    ImageView   iv_lights_fault;
     ImageView   iv_low_wiper_fluid;
     ImageView   iv_low_tire_pressure;
     ImageView   iv_airbags;
@@ -61,21 +59,17 @@ public class Display extends AppCompatActivity {
     ImageView   iv_abs;
     ImageView   iv_motor;
 
-    TextView    tv_connected;
     TextView    tv_speed;
     TextView    tv_battery;
     Button      btn_retry;
 
     // bluetooth attributes
     BluetoothGatt   gatt;
-    BluetoothGatt   gatt_warnings;
     BluetoothDevice device;
     boolean services_discovered = false;
-    boolean services_discovered_warnings = false;
 
     // data structures for bluetooth
     List<BluetoothGattCharacteristic> device_characteristics = new ArrayList<>();
-    List<BluetoothGattCharacteristic> device_characteristics_warnings = new ArrayList<>();
 
     // stores the characteristic values
     DashboardService dashboard = new DashboardService();
@@ -108,7 +102,6 @@ public class Display extends AppCompatActivity {
 
         // starts the GATT service
         gatt = device.connectGatt(getApplicationContext(), false, gatt_callback, 2);
-        gatt_warnings = device.connectGatt(getApplicationContext(), false, gatt_callback_warnings, 2);
 
         // initialises all of the GUI attributes
         iv_indicator_left =         (ImageView) findViewById(R.id.img_indicator_left);
@@ -119,16 +112,14 @@ public class Display extends AppCompatActivity {
         iv_needle_speed =           (ImageView) findViewById(R.id.iv_needle_speed);
         iv_gauge_battery =          (ImageView) findViewById(R.id.iv_gauge_battery);
         iv_needle_battery =         (ImageView) findViewById(R.id.iv_needle_battery);
-        iv_master_warning =         (ImageView) findViewById(R.id.iv_master_warning);
         iv_seatbelt  =              (ImageView) findViewById(R.id.iv_seatbelt);
-        iv_lights_fault  =              (ImageView) findViewById(R.id.iv_lights_fault);
         iv_low_tire_pressure  =              (ImageView) findViewById(R.id.iv_low_tire_pressure);
         iv_low_wiper_fluid  =              (ImageView) findViewById(R.id.iv_low_wiper_fluid);
         iv_airbags  =              (ImageView) findViewById(R.id.iv_air_bag_fault);
         iv_brake_system  =              (ImageView) findViewById(R.id.iv_brakes);
         iv_abs  =              (ImageView) findViewById(R.id.iv_abs);
         iv_motor  =              (ImageView) findViewById(R.id.iv_motor);
-        tv_connected =              (TextView) findViewById(R.id.text_connected);
+        iv_connected = (ImageView) findViewById(R.id.iv_connected);
         tv_speed =                  (TextView) findViewById(R.id.tv_speed);
         tv_battery =                (TextView) findViewById(R.id.tv_battery);
         btn_retry =                 (Button) findViewById(R.id.btn_retry_connection);
@@ -137,7 +128,6 @@ public class Display extends AppCompatActivity {
         iv_lights = (ImageView) findViewById(R.id.iv_light_intensity);
         txt_range = (TextView) findViewById(R.id.txt_battery_range);
         txt_distance = (TextView) findViewById(R.id.txt_distance);
-        iv_charging = (ImageView) findViewById(R.id.iv_charging);
 
         btn_retry.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -189,13 +179,20 @@ public class Display extends AppCompatActivity {
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BATTERY_CHARGE))));
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BATTERY_RANGE))));
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BATTERY_TEMP))));
-                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BATTERY_CHARGE_STATUS))));
 
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.SPEED))));
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.DISTANCE_TRAVELED))));
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.TURN_SIGNAL))));
                 device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.LIGHTS))));
-                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.PARKING_BREAK))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.PARKING_BRAKE))));
+
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.ABS))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.ELECTRIC_DRIVE_SYSTEM))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.SEAT_BELT))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.LOW_WIPER_FLUID))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.LOW_TIRE_PRESSURE))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.AIR_BAGS))));
+                device_characteristics.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BRAKE_SYSTEM))));
 
                 // refresh the GUI
                 runGUIThread(DEVICE_CONNECTED);
@@ -229,8 +226,6 @@ public class Display extends AppCompatActivity {
                 dashboard.battery_range         = Integer.parseInt(received_value);
             else if (current_char.equals        (dashboard.characteristics.get(dashboard.BATTERY_TEMP)))
                 dashboard.battery_temp          = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BATTERY_CHARGE_STATUS)))
-                dashboard.battery_charge_status = Integer.parseInt(received_value);
             else if (current_char.equals        (dashboard.characteristics.get(dashboard.SPEED)))
                 dashboard.speed                 = Integer.parseInt(received_value);
             else if (current_char.equals        (dashboard.characteristics.get(dashboard.DISTANCE_TRAVELED)))
@@ -239,8 +234,23 @@ public class Display extends AppCompatActivity {
                 dashboard.turn_signal           = Integer.parseInt(received_value);
             else if (current_char.equals        (dashboard.characteristics.get(dashboard.LIGHTS)))
                 dashboard.lights                = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.PARKING_BREAK)))
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.PARKING_BRAKE)))
                 dashboard.parking_brake         = Integer.parseInt(received_value);
+
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.SEAT_BELT)))
+                dashboard.seat_belt             = Integer.parseInt(received_value);
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LOW_WIPER_FLUID)))
+                dashboard.low_wiper_fluid       = Integer.parseInt(received_value);
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LOW_TIRE_PRESSURE)))
+                dashboard.low_tire_pressure     = Integer.parseInt(received_value);
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.AIR_BAGS)))
+                dashboard.air_bags              = Integer.parseInt(received_value);
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BRAKE_SYSTEM)))
+                dashboard.brake_system          = Integer.parseInt(received_value);
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.ABS)))
+                dashboard.abs                   = Integer.parseInt(received_value);
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.ELECTRIC_DRIVE_SYSTEM)))
+                dashboard.electric_drive_system = Integer.parseInt(received_value);
 
             Log.d(current_char + "     Changed Value", received_value);
 
@@ -268,8 +278,6 @@ public class Display extends AppCompatActivity {
                 dashboard.battery_range         = Integer.parseInt(received_value);
             else if (current_char.equals        (dashboard.characteristics.get(dashboard.BATTERY_TEMP)))
                 dashboard.battery_temp          = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BATTERY_CHARGE_STATUS)))
-                dashboard.battery_charge_status = Integer.parseInt(received_value);
             if (current_char.equals             (dashboard.characteristics.get(dashboard.SPEED)))
                 dashboard.speed                 = Integer.parseInt(received_value);
             else if (current_char.equals        (dashboard.characteristics.get(dashboard.DISTANCE_TRAVELED)))
@@ -278,133 +286,11 @@ public class Display extends AppCompatActivity {
                 dashboard.turn_signal           = Integer.parseInt(received_value);
             else if (current_char.equals        (dashboard.characteristics.get(dashboard.LIGHTS)))
                 dashboard.lights                = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.PARKING_BREAK)))
+            else if (current_char.equals        (dashboard.characteristics.get(dashboard.PARKING_BRAKE)))
                 dashboard.parking_brake         = Integer.parseInt(received_value);
 
-            Log.d(current_char + "     Changed Value", received_value);
-
-            // updates the GUI on the UI thread
-            try {
-                runGUIThread(DEVICE_CONNECTED);
-            } catch (Exception e) {
-                Log.d(TAG, "Error (read)" + e);
-            }
-        }
-    };
-
-    public BluetoothGattCallback gatt_callback_warnings = new BluetoothGattCallback() {
-        // when the connection state is changed, this will be called
-        @Override
-        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-            super.onConnectionStateChange(gatt, status, newState);
-
-            // checks if the bluetooth device has disconnected
-            if (status == BluetoothGatt.GATT_FAILURE || status != BluetoothGatt.GATT_SUCCESS || newState == BluetoothProfile.STATE_DISCONNECTED) {
-                // disconnects the service
-                gatt.disconnect();
-                runGUIThread(DEVICE_DISCONNECTED);
-            }
-
-            // checks if the device is connected
-            else if (newState == BluetoothProfile.STATE_CONNECTED) {
-                // waits for any running GATT services to finish
-                try { Thread.sleep(600); }
-                catch (InterruptedException e) { e.printStackTrace(); }
-                // update the GUI to state the device is connected
-                runGUIThread(DEVICE_CONNECTED);
-                // attempts to discover services the device is advertising
-                gatt.discoverServices();
-            }
-        }
-
-        @Override
-        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-            Log.d("BluetoothLeService", "onServicesDiscovered()");
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-
-                // gets the services and the services characteristics and stores them as attributes
-                BluetoothGattService service = gatt.getService(UUID.fromString(dashboard.SERVICE_UUID));
-
-                device_characteristics_warnings.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.ABS))));
-                device_characteristics_warnings.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.ELECTRIC_DRIVE_SYSTEM))));
-                device_characteristics_warnings.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.MASTER_WARNING))));
-                device_characteristics_warnings.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.SEAT_BELT))));
-                device_characteristics_warnings.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.LIGHTS_FAULT))));
-                device_characteristics_warnings.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.LOW_WIPER_FLUID))));
-                device_characteristics_warnings.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.LOW_TIRE_PRESSURE))));
-                device_characteristics_warnings.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.AIR_BAGS))));
-                device_characteristics_warnings.add(service.getCharacteristic(UUID.fromString(dashboard.characteristics.get(dashboard.BRAKE_SYSTEM))));
-
-                // refresh the GUI
-                runGUIThread(DEVICE_CONNECTED);
-
-                // runs through each characteristic and sets a notification for each
-                for(int characteristic = 0; characteristic < device_characteristics_warnings.size(); characteristic++){
-                    gatt.setCharacteristicNotification(device_characteristics_warnings.get(characteristic), true);
-                }
-                services_discovered_warnings = true;
-                readCharacteristics();
-            }
-        }
-
-        // reads each characteristic  to to update the GUI with the initial device characteristic values
-        //      (characteristics removed recursively from onCharacteristicRead())
-        public void readCharacteristics() {
-            gatt.readCharacteristic(device_characteristics_warnings.get(device_characteristics_warnings.size()-1));
-        }
-
-        // when a characteristic is successfully initially read, this method will be called
-        @Override
-        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            super.onCharacteristicRead(gatt, characteristic, status);
-
-            String current_char = characteristic.getUuid().toString();
-            String received_value = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-
-            if (current_char.equals             (dashboard.characteristics.get(dashboard.MASTER_WARNING)))
-                dashboard.master_warning        = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.SEAT_BELT)))
+            else if (current_char.equals             (dashboard.characteristics.get(dashboard.SEAT_BELT)))
                 dashboard.seat_belt             = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LIGHTS_FAULT)))
-                dashboard.lights_fault          = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LOW_WIPER_FLUID)))
-                dashboard.low_wiper_fluid       = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LOW_TIRE_PRESSURE)))
-                dashboard.low_tire_pressure     = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.AIR_BAGS)))
-                dashboard.air_bags              = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.BRAKE_SYSTEM)))
-                dashboard.brake_system          = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.ABS)))
-                dashboard.abs                   = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.ELECTRIC_DRIVE_SYSTEM)))
-                dashboard.electric_drive_system = Integer.parseInt(received_value);
-
-            Log.d(current_char + "     Read Value", received_value);
-
-            // updates the GUI on the UI thread
-            try { runGUIThread(DEVICE_CONNECTED); } catch (Exception e) { Log.d(TAG, "Error (read)" + e); }
-
-            // recursively removes each characteristic until all have been read
-            device_characteristics.remove(device_characteristics.get(device_characteristics.size() - 1));
-            if (device_characteristics.size() > 0) readCharacteristics();
-        }
-
-        // when a characteristic value has changed on the device, this method will be called
-        //      (called via a notification on each characteristic)
-        @Override
-        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            super.onCharacteristicChanged(gatt, characteristic);
-
-            String current_char = characteristic.getUuid().toString();
-            String received_value = new String(characteristic.getValue(), StandardCharsets.UTF_8);
-
-            if (current_char.equals             (dashboard.characteristics.get(dashboard.MASTER_WARNING)))
-                dashboard.master_warning        = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.SEAT_BELT)))
-                dashboard.seat_belt             = Integer.parseInt(received_value);
-            else if (current_char.equals        (dashboard.characteristics.get(dashboard.LIGHTS_FAULT)))
-                dashboard.lights_fault          = Integer.parseInt(received_value);
             else if (current_char.equals        (dashboard.characteristics.get(dashboard.LOW_WIPER_FLUID)))
                 dashboard.low_wiper_fluid       = Integer.parseInt(received_value);
             else if (current_char.equals        (dashboard.characteristics.get(dashboard.LOW_TIRE_PRESSURE)))
@@ -480,14 +366,13 @@ public class Display extends AppCompatActivity {
                         public void run() {
                             // checks if the device has disconnected and gives the option to try again
                             if (connection_status == DEVICE_DISCONNECTED) {
-                                tv_connected.setText("Disconencted");
+                                iv_connected.setImageResource(R.drawable.connection_grey);
                                 btn_retry.setVisibility(View.VISIBLE);
                             }
                             else if (connection_status == DEVICE_CONNECTED) {
-                                tv_connected.setText("Connected");
+                                iv_connected.setImageResource(R.drawable.connection_green);
                                 btn_retry.setVisibility(View.GONE);
                             }
-
                             // checks the indicator and starts/stops the relevant animations
                             if (dashboard.turn_signal == 0) {
                                 animation_right.cancel();
@@ -517,13 +402,8 @@ public class Display extends AppCompatActivity {
                                 iv_indicator_left_grey.setVisibility(View.VISIBLE);
                             }
 
-
-                            if (dashboard.master_warning == 0) iv_master_warning.setImageResource(R.drawable.master_warning_grey);
-                            else iv_master_warning.setImageResource(R.drawable.master_warning_red);
                             if (dashboard.seat_belt == 0) iv_seatbelt.setImageResource(R.drawable.seatbelt_warning_grey);
                             else iv_seatbelt.setImageResource(R.drawable.seatbelt_warning_red);
-                            if (dashboard.lights_fault == 0) iv_lights_fault.setImageResource(R.drawable.lights_fault_grey);
-                            else iv_lights_fault.setImageResource(R.drawable.lights_fault_red);
                             if (dashboard.low_wiper_fluid == 0) iv_low_wiper_fluid.setImageResource(R.drawable.low_wiper_fluid_grey);
                             else iv_low_wiper_fluid.setImageResource(R.drawable.low_wiper_fluid_red);
                             if (dashboard.low_tire_pressure == 0) iv_low_tire_pressure.setImageResource(R.drawable.low_tire_pressure_grey);
@@ -541,15 +421,14 @@ public class Display extends AppCompatActivity {
                             else iv_motor.setImageResource(R.drawable.electric_drive_system_fault_red);
 
                             if (dashboard.battery_temp > 20) iv_battery_temp.setImageResource(R.drawable.temp_red);
-                            else if (dashboard.battery_temp == 20) iv_battery_temp.setImageResource(R.drawable.temp_grey);
-                            else if (dashboard.battery_temp < 20) iv_battery_temp.setImageResource(R.drawable.temp_blue);
+                            else if (dashboard.battery_temp <= 20 && dashboard.battery_temp >= 10) iv_battery_temp.setImageResource(R.drawable.temp_grey);
+                            else if (dashboard.battery_temp < 10) iv_battery_temp.setImageResource(R.drawable.temp_blue);
                             if (dashboard.parking_brake == 0) iv_parking_brake.setImageResource(R.drawable.parking_brake_grey);
                             else iv_parking_brake.setImageResource(R.drawable.parking_brake_red);
                             if (dashboard.lights == 0) iv_lights.setImageResource(R.drawable.no_lightbeam_grey);
                             else if (dashboard.lights == 1) iv_lights.setImageResource(R.drawable.med_lightbeam_green);
                             else if (dashboard.lights == 2) iv_lights.setImageResource(R.drawable.high_lightbeam_blue);
-                            if (dashboard.battery_charge_status == 0) iv_charging.setImageResource(R.drawable.charging_icon_grey);
-                            else iv_charging.setImageResource(R.drawable.charging_icon_green);
+                            else if (dashboard.lights == 3) iv_lights.setImageResource(R.drawable.lights_fault_red);
 
                             txt_range.setText(Integer.toString(dashboard.battery_range));
                             txt_distance.setText(Integer.toString(dashboard.distance_traveled));
