@@ -2,16 +2,26 @@ package com.project.ashb.myapplication;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 
+import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Rect;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.ParcelUuid;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
@@ -20,7 +30,9 @@ import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -44,12 +56,14 @@ public class Display extends AppCompatActivity {
     ImageView   iv_gauge_battery;
     ImageView   iv_needle_battery;
     ImageView iv_connected;
+    ImageView iv_master_warning;
 
     ImageView iv_battery_temp;
     ImageView iv_parking_brake;
     ImageView iv_lights;
     TextView txt_range;
     TextView txt_distance;
+    TextView txt_connecting;
 
     ImageView   iv_seatbelt;
     ImageView   iv_low_wiper_fluid;
@@ -91,17 +105,31 @@ public class Display extends AppCompatActivity {
     float           current_position_speed;
     float           current_position_battery;
 
+    // handles the bluetooth
+    BluetoothManager bluetooth_manager;
+    BluetoothAdapter bluetooth_adapter;
+    BluetoothLeScanner bluetooth_scanner;
+    private final static int REQUEST_ENABLE_BT = 1;
+
+    // devices
+    ArrayList<BluetoothDevice> devices = new ArrayList<BluetoothDevice>();
+    ArrayList<Boolean> master_warning_check = new ArrayList<Boolean>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_display);
 
-        // gets extra variables passed from MainActivity.java
-        Intent intent = getIntent();
-        device = intent.getExtras().getParcelable("device");
+        bluetooth_manager = (BluetoothManager)getApplicationContext().getSystemService(Context.BLUETOOTH_SERVICE);
+        bluetooth_adapter = bluetooth_manager.getAdapter();
 
-        // starts the GATT service
-        gatt = device.connectGatt(getApplicationContext(), false, gatt_callback, 2);
+         if (bluetooth_adapter != null && bluetooth_adapter.isEnabled()) {
+             startScanning();
+         }
+
+         for (int i = 0; i < 10; i++) {
+             master_warning_check.add(false);
+         }
 
         // initialises all of the GUI attributes
         iv_indicator_left =         (ImageView) findViewById(R.id.img_indicator_left);
@@ -113,25 +141,35 @@ public class Display extends AppCompatActivity {
         iv_gauge_battery =          (ImageView) findViewById(R.id.iv_gauge_battery);
         iv_needle_battery =         (ImageView) findViewById(R.id.iv_needle_battery);
         iv_seatbelt  =              (ImageView) findViewById(R.id.iv_seatbelt);
-        iv_low_tire_pressure  =              (ImageView) findViewById(R.id.iv_low_tire_pressure);
-        iv_low_wiper_fluid  =              (ImageView) findViewById(R.id.iv_low_wiper_fluid);
-        iv_airbags  =              (ImageView) findViewById(R.id.iv_air_bag_fault);
-        iv_brake_system  =              (ImageView) findViewById(R.id.iv_brakes);
-        iv_abs  =              (ImageView) findViewById(R.id.iv_abs);
-        iv_motor  =              (ImageView) findViewById(R.id.iv_motor);
-        iv_connected = (ImageView) findViewById(R.id.iv_connected);
+        iv_low_tire_pressure  =     (ImageView) findViewById(R.id.iv_low_tire_pressure);
+        iv_low_wiper_fluid  =       (ImageView) findViewById(R.id.iv_low_wiper_fluid);
+        iv_airbags  =               (ImageView) findViewById(R.id.iv_air_bag_fault);
+        iv_brake_system  =          (ImageView) findViewById(R.id.iv_brakes);
+        iv_abs  =                   (ImageView) findViewById(R.id.iv_abs);
+        iv_motor  =                 (ImageView) findViewById(R.id.iv_motor);
+        iv_master_warning =         (ImageView) findViewById(R.id.iv_master_warning);
+        iv_connected =              (ImageView) findViewById(R.id.iv_connected);
+        iv_battery_temp =           (ImageView) findViewById(R.id.iv_battery_temp);
+        iv_parking_brake =          (ImageView) findViewById(R.id.iv_handbrake);
+        iv_lights =                 (ImageView) findViewById(R.id.iv_light_intensity);
         tv_speed =                  (TextView) findViewById(R.id.tv_speed);
         tv_battery =                (TextView) findViewById(R.id.tv_battery);
+        txt_range =                 (TextView) findViewById(R.id.txt_battery_range);
+        txt_distance =              (TextView) findViewById(R.id.txt_distance);
+        txt_connecting =            (TextView) findViewById(R.id.txt_connecting);
         btn_retry =                 (Button) findViewById(R.id.btn_retry_connection);
-        iv_battery_temp = (ImageView) findViewById(R.id.iv_battery_temp);
-        iv_parking_brake = (ImageView) findViewById(R.id.iv_handbrake);
-        iv_lights = (ImageView) findViewById(R.id.iv_light_intensity);
-        txt_range = (TextView) findViewById(R.id.txt_battery_range);
-        txt_distance = (TextView) findViewById(R.id.txt_distance);
+
+
 
         btn_retry.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                finish();
+                if (bluetooth_adapter != null && bluetooth_adapter.isEnabled()) {
+                    txt_connecting.setVisibility(View.VISIBLE);
+                    startScanning();
+                }
+                else {
+                    Toast.makeText(getApplicationContext(), "Please Enable Bluetooth", Toast.LENGTH_LONG).show();
+                }
             }
         });
 
@@ -141,6 +179,63 @@ public class Display extends AppCompatActivity {
         createTurnSignalAnimations();
 
     }
+
+    private ScanCallback le_scan_callback = new ScanCallback() {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            if (!devices.contains(result.getDevice())) {
+                stopScanning();
+                device = result.getDevice();
+                // starts the GATT service
+                gatt = device.connectGatt(getApplicationContext(), false, gatt_callback, 2);
+            }
+        }
+    };
+
+    public void startScanning() {
+        bluetooth_scanner = bluetooth_adapter.getBluetoothLeScanner();
+        System.out.println("start scanning");
+        devices.clear();
+        AsyncTask.execute(new Runnable() {
+            @Override
+            public void run() {
+                ScanFilter filter = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(dashboard.SERVICE_UUID)).build();
+                List<ScanFilter> filters = new ArrayList<>();
+                filters.add(filter);
+                ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+                bluetooth_scanner.startScan(filters, settings, le_scan_callback);
+            }
+        });
+    }
+
+    public void stopScanning() {
+        System.out.println("stopping scanning");
+        AsyncTask.execute(new Runnable() {
+            @Override
+            public void run() {
+                bluetooth_scanner.stopScan(le_scan_callback);
+                Log.d(TAG, "Devices:" + devices);
+            }
+        });
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     public BluetoothGattCallback gatt_callback = new BluetoothGattCallback() {
 
@@ -364,6 +459,7 @@ public class Display extends AppCompatActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            txt_connecting.setVisibility(View.GONE);
                             // checks if the device has disconnected and gives the option to try again
                             if (connection_status == DEVICE_DISCONNECTED) {
                                 iv_connected.setImageResource(R.drawable.connection_grey);
@@ -402,33 +498,119 @@ public class Display extends AppCompatActivity {
                                 iv_indicator_left_grey.setVisibility(View.VISIBLE);
                             }
 
-                            if (dashboard.seat_belt == 0) iv_seatbelt.setImageResource(R.drawable.seatbelt_warning_grey);
-                            else iv_seatbelt.setImageResource(R.drawable.seatbelt_warning_red);
-                            if (dashboard.low_wiper_fluid == 0) iv_low_wiper_fluid.setImageResource(R.drawable.low_wiper_fluid_grey);
-                            else iv_low_wiper_fluid.setImageResource(R.drawable.low_wiper_fluid_red);
-                            if (dashboard.low_tire_pressure == 0) iv_low_tire_pressure.setImageResource(R.drawable.low_tire_pressure_grey);
-                            else iv_low_tire_pressure.setImageResource(R.drawable.low_tire_pressure_red);
-                            if (dashboard.air_bags == 0) iv_airbags.setImageResource(R.drawable.airbag_fault_grey);
-                            else iv_airbags.setImageResource(R.drawable.airbag_fault_red);
-                            if (dashboard.brake_system == 0) iv_brake_system.setImageResource(R.drawable.brake_warning_grey);
-                            else if (dashboard.brake_system == 1) iv_brake_system.setImageResource(R.drawable.brake_warning_orange);
-                            else iv_brake_system.setImageResource(R.drawable.brake_warning_red);
-                            if (dashboard.abs == 0) iv_abs.setImageResource(R.drawable.abs_fault_grey);
-                            else if (dashboard.abs == 1) iv_abs.setImageResource(R.drawable.abs_fault_orange);
-                            else iv_abs.setImageResource(R.drawable.abs_fault_red);
-                            if (dashboard.electric_drive_system == 0) iv_motor.setImageResource(R.drawable.electric_drive_system_fault_grey);
-                            else if (dashboard.electric_drive_system == 1) iv_motor.setImageResource(R.drawable.electric_drive_system_fault_orange);
-                            else iv_motor.setImageResource(R.drawable.electric_drive_system_fault_red);
+                            if (dashboard.seat_belt == 0) {
+                                master_warning_check.set(0, false);
+                                iv_seatbelt.setImageResource(R.drawable.seatbelt_warning_grey);
+                            }
+                            else {
+                                master_warning_check.set(0, true);
+                                iv_seatbelt.setImageResource(R.drawable.seatbelt_warning_red);
+                            }
+                            if (dashboard.low_wiper_fluid == 0) {
+                                master_warning_check.set(1, false);
+                                iv_low_wiper_fluid.setImageResource(R.drawable.low_wiper_fluid_grey);
+                            }
+                            else {
+                                master_warning_check.set(1, true);
+                                iv_low_wiper_fluid.setImageResource(R.drawable.low_wiper_fluid_red);
+                            }
+                            if (dashboard.low_tire_pressure == 0) {
+                                master_warning_check.set(2, false);
+                                iv_low_tire_pressure.setImageResource(R.drawable.low_tire_pressure_grey);
+                            }
+                            else {
+                                iv_low_tire_pressure.setImageResource(R.drawable.low_tire_pressure_red);
+                                master_warning_check.set(2, true);
+                            }
+                            if (dashboard.air_bags == 0) {
+                                master_warning_check.set(3, false);
+                                iv_airbags.setImageResource(R.drawable.airbag_fault_grey);
+                            }
+                            else {
+                                master_warning_check.set(3, true);
+                                iv_airbags.setImageResource(R.drawable.airbag_fault_red);
+                            }
+                            if (dashboard.brake_system == 0) {
+                                master_warning_check.set(4, false);
+                                iv_brake_system.setImageResource(R.drawable.brake_warning_grey);
+                            }
+                            else if (dashboard.brake_system == 1) {
+                                master_warning_check.set(4, true);
+                                iv_brake_system.setImageResource(R.drawable.brake_warning_orange);
+                            }
+                            else {
+                                master_warning_check.set(4, true);
+                                iv_brake_system.setImageResource(R.drawable.brake_warning_red);
+                            }
+                            if (dashboard.abs == 0) {
+                                master_warning_check.set(5, false);
+                                iv_abs.setImageResource(R.drawable.abs_fault_grey);
+                            }
+                            else if (dashboard.abs == 1) {
+                                master_warning_check.set(5, true);
+                                iv_abs.setImageResource(R.drawable.abs_fault_orange);
+                            }
+                            else {
+                                master_warning_check.set(5, true);
+                                iv_abs.setImageResource(R.drawable.abs_fault_red);
+                            }
+                            if (dashboard.electric_drive_system == 0) {
+                                master_warning_check.set(6, false);
+                                iv_motor.setImageResource(R.drawable.electric_drive_system_fault_grey);
+                            }
+                            else if (dashboard.electric_drive_system == 1) {
+                                master_warning_check.set(6, true);
+                                iv_motor.setImageResource(R.drawable.electric_drive_system_fault_orange);
+                            }
+                            else {
+                                master_warning_check.set(6, true);
+                                iv_motor.setImageResource(R.drawable.electric_drive_system_fault_red);
+                            }
 
-                            if (dashboard.battery_temp > 20) iv_battery_temp.setImageResource(R.drawable.temp_red);
-                            else if (dashboard.battery_temp <= 20 && dashboard.battery_temp >= 10) iv_battery_temp.setImageResource(R.drawable.temp_grey);
-                            else if (dashboard.battery_temp < 10) iv_battery_temp.setImageResource(R.drawable.temp_blue);
-                            if (dashboard.parking_brake == 0) iv_parking_brake.setImageResource(R.drawable.parking_brake_grey);
-                            else iv_parking_brake.setImageResource(R.drawable.parking_brake_red);
-                            if (dashboard.lights == 0) iv_lights.setImageResource(R.drawable.no_lightbeam_grey);
-                            else if (dashboard.lights == 1) iv_lights.setImageResource(R.drawable.med_lightbeam_green);
-                            else if (dashboard.lights == 2) iv_lights.setImageResource(R.drawable.high_lightbeam_blue);
-                            else if (dashboard.lights == 3) iv_lights.setImageResource(R.drawable.lights_fault_red);
+                            if (dashboard.battery_temp > 20) {
+                                master_warning_check.set(7, true);
+                                iv_battery_temp.setImageResource(R.drawable.temp_red);
+                            }
+                            else if (dashboard.battery_temp <= 20 && dashboard.battery_temp >= 10) {
+                                master_warning_check.set(7, false);
+                                iv_battery_temp.setImageResource(R.drawable.temp_grey);
+                            }
+                            else if (dashboard.battery_temp < 10) {
+                                master_warning_check.set(7, false);
+                                iv_battery_temp.setImageResource(R.drawable.temp_blue);
+                            }
+                            if (dashboard.parking_brake == 0) {
+                                master_warning_check.set(8, false);
+                                iv_parking_brake.setImageResource(R.drawable.parking_brake_grey);
+                            }
+                            else {
+                                master_warning_check.set(8, true);
+                                iv_parking_brake.setImageResource(R.drawable.parking_brake_red);
+                            }
+                            if (dashboard.lights == 0) {
+                                master_warning_check.set(9, false);
+                                iv_lights.setImageResource(R.drawable.no_lightbeam_grey);
+                            }
+                            else if (dashboard.lights == 1) {
+                                master_warning_check.set(9, false);
+                                iv_lights.setImageResource(R.drawable.med_lightbeam_green);
+                            }
+                            else if (dashboard.lights == 2) {
+                                master_warning_check.set(9, false);
+                                iv_lights.setImageResource(R.drawable.high_lightbeam_blue);
+                            }
+                            else if (dashboard.lights == 3) {
+                                master_warning_check.set(9, true);
+                                iv_lights.setImageResource(R.drawable.lights_fault_red);
+                            }
+
+                            if (master_warning_check.contains(true)) {
+                                iv_master_warning.setImageResource(R.drawable.master_warning_red);
+                            }
+                            else {
+                                iv_master_warning.setImageResource(R.drawable.master_warning_grey);
+                            }
+
 
                             txt_range.setText(Integer.toString(dashboard.battery_range));
                             txt_distance.setText(Integer.toString(dashboard.distance_traveled));

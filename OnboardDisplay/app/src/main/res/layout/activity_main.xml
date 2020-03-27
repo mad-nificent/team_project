@@ -29,13 +29,4 @@
         android:layout_marginTop="60dp"
         android:textColor="#666666"/>
 
-    <Button
-        android:fontFamily="sans-serif-light"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:text="Connect to Nearby Device"
-        android:id="@+id/btn_start_scanning"
-        android:layout_marginTop="100dp"
-        android:textColor="#666666"/>
-
 </RelativeLayout>
