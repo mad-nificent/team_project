@@ -8,24 +8,25 @@ public class VehicleService
 {
     BluetoothLE bluetoothLE;
     
-    private final String UUID = "dee0e505-9680-430e-a4c4-a225905ce33d";
+    private final String       UUID = "dee0e505-9680-430e-a4c4-a225905ce33d";
+    private final String descriptor = "00002902-0000-1000-8000-00805f9b34fb";
     
     enum Property
     {
         // battery data
-        BATTERY_LVL, CHARGING, RANGE, BATTERY_TEMP,
+        BATTERY_LVL, RANGE, BATTERY_TEMP,
         
         // car data
         SPEED, RPM, DISTANCE, TURN_SIGNAL, LIGHTS, HANDBRAKE,
         
         // warnings
-        WARNING, SEATBELT, LIGHTS_ERR, WIPER_LOW, TYRE_PRESSURE_LOW, AIRBAG_ERR, BRAKE_ERR, ABS_ERR, ENGIN_ERR
+        SEATBELT, WIPER_LOW, TYRE_PRESSURE_LOW, AIRBAG_ERR, BRAKE_ERR, ABS_ERR, ENGIN_ERR
     }
     
     // property states
     public final int         STATE_OFF = 0,           STATE_ON = 1;
     public final int STATE_SIGNAL_LEFT = 1, STATE_SIGNAL_RIGHT = 2;
-    public final int  STATE_LIGHTS_LOW = 1,  STATE_LIGHTS_HIGH = 2;
+    public final int  STATE_LIGHTS_LOW = 1,  STATE_LIGHTS_HIGH = 2, STATE_LIGHTS_ERR = 3;
     public final int STATE_WARNING_LOW = 1, STATE_WARNING_HIGH = 2;
     
     public class Characteristic
@@ -107,16 +108,6 @@ public class VehicleService
         characteristics.add(newCharacteristic);
     
         newCharacteristic = new Characteristic
-                ("ed88d679-5aba-4fda-a710-42156bc85524",
-                        Property.CHARGING,
-                        Characteristic.FORMAT_STATE);
-        
-        newCharacteristic.addSupportedValue(STATE_OFF);
-        newCharacteristic.addSupportedValue(STATE_ON);
-        
-        characteristics.add(newCharacteristic);
-    
-        newCharacteristic =new Characteristic
                 ("bf252fd6-c1e3-4835-b4be-b5e353e62d7b",
                         Property.RANGE,
                         Characteristic.FORMAT_NUMBER);
@@ -173,6 +164,7 @@ public class VehicleService
         newCharacteristic.addSupportedValue(STATE_OFF);
         newCharacteristic.addSupportedValue(STATE_LIGHTS_LOW);
         newCharacteristic.addSupportedValue(STATE_LIGHTS_HIGH);
+        newCharacteristic.addSupportedValue(STATE_LIGHTS_ERR);
         
         characteristics.add(newCharacteristic);
     
@@ -190,28 +182,8 @@ public class VehicleService
         // warnings
         //------------------------------------------------------------
         newCharacteristic = new Characteristic
-                ("9d5a5763-38a0-4eb6-83b6-0a5da1270266",
-                        Property.WARNING,
-                        Characteristic.FORMAT_STATE);
-    
-        newCharacteristic.addSupportedValue(STATE_OFF);
-        newCharacteristic.addSupportedValue(STATE_ON);
-        
-        characteristics.add(newCharacteristic);
-    
-        newCharacteristic = new Characteristic
                 ("da2d9231-ae69-4b5b-b4dc-d7c940e72815",
                         Property.SEATBELT,
-                        Characteristic.FORMAT_STATE);
-    
-        newCharacteristic.addSupportedValue(STATE_OFF);
-        newCharacteristic.addSupportedValue(STATE_ON);
-        
-        characteristics.add(newCharacteristic);
-    
-        newCharacteristic = new Characteristic
-                ("ae86ebf4-b0ef-42ff-9dd2-0f15fb441b2f",
-                        Property.LIGHTS_ERR,
                         Characteristic.FORMAT_STATE);
     
         newCharacteristic.addSupportedValue(STATE_OFF);
@@ -285,7 +257,9 @@ public class VehicleService
     }
     
     public String getUUID() { return UUID; }
-    
+
+    public String getDescriptor() { return descriptor; }
+
     public Characteristic getCharacteristic(Property property)
     {
         for (Characteristic characteristic : characteristics)
@@ -305,7 +279,6 @@ public class VehicleService
         ArrayList<Characteristic> warnings = new ArrayList<>();
 
         warnings.add(getCharacteristic(Property.SEATBELT));
-        warnings.add(getCharacteristic(Property.LIGHTS_ERR));
         warnings.add(getCharacteristic(Property.WIPER_LOW));
         warnings.add(getCharacteristic(Property.TYRE_PRESSURE_LOW));
         warnings.add(getCharacteristic(Property.AIRBAG_ERR));

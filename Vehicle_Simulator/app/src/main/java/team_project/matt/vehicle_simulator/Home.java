@@ -106,12 +106,11 @@ public class Home
             return;
         
         // start GATT, returns false if already started
-        if (!vehicleService.bluetoothLE.startGATT(vehicleService.getUUID(), vehicleService.getCharacteristicUUIDs(), vehicleService.getCharacteristicFormats()))
+        if (!vehicleService.bluetoothLE.startGATT(vehicleService.getUUID(), vehicleService.getCharacteristicUUIDs(), vehicleService.getCharacteristicFormats(), vehicleService.getDescriptor()))
             return;
         
         vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(100);
         vehicleService.getCharacteristic(VehicleService.Property.RANGE).setData(0);                             //get from shared prefs later
-        vehicleService.getCharacteristic(VehicleService.Property.CHARGING).setData(vehicleService.STATE_OFF);
         vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData(20);                     // safe temp 20-45c
         vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(0);
         vehicleService.getCharacteristic(VehicleService.Property.RPM).setData(0);
@@ -119,9 +118,7 @@ public class Home
         vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(vehicleService.STATE_OFF);
         vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(vehicleService.STATE_OFF);
         vehicleService.getCharacteristic(VehicleService.Property.HANDBRAKE).setData(vehicleService.STATE_ON);
-        vehicleService.getCharacteristic(VehicleService.Property.WARNING).setData(vehicleService.STATE_OFF);
         vehicleService.getCharacteristic(VehicleService.Property.SEATBELT).setData(vehicleService.STATE_OFF);
-        vehicleService.getCharacteristic(VehicleService.Property.LIGHTS_ERR).setData(vehicleService.STATE_OFF);
         vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(vehicleService.STATE_OFF);
         vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW).setData(vehicleService.STATE_OFF);
         vehicleService.getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(vehicleService.STATE_OFF);
@@ -145,25 +142,7 @@ public class Home
         VehicleService.Characteristic speedData = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
         speed.setText(String.format(Locale.getDefault(), "%d", speedData.getData()));
     }
-    
-    // update all modified data and send out a notification
-    public void onChargeClick(View view)
-    {
-        VehicleService.Characteristic charge = vehicleService.getCharacteristic(VehicleService.Property.CHARGING);
 
-        if (charge.getData() == vehicleService.STATE_OFF)
-        {
-            charge.setData(vehicleService.STATE_ON);
-            view.setBackgroundColor(Color.rgb(0, 255, 0));
-        }
-
-        else
-        {
-            charge.setData(vehicleService.STATE_OFF);
-            view.setBackgroundColor(Color.rgb(255, 0, 0));
-        }
-    }
-    
     public void onMinusClick(View view)
     {
         EditText txtView = null;
@@ -358,8 +337,15 @@ public class Home
 
             case R.id.btnLightsWarning:
             {
-                characteristic = vehicleService.getCharacteristic(VehicleService.Property.LIGHTS_ERR);
-                break;
+                characteristic = vehicleService.getCharacteristic(VehicleService.Property.LIGHTS);
+
+                if (characteristic.getData() == vehicleService.STATE_OFF)
+                    characteristic.setData(vehicleService.STATE_LIGHTS_ERR);
+
+                else if (characteristic.getData() == vehicleService.STATE_LIGHTS_ERR)
+                    characteristic.setData(vehicleService.STATE_OFF);
+
+                return;
             }
 
             case R.id.btnWiperWarning:
@@ -404,55 +390,17 @@ public class Home
 
         if (characteristic != null)
         {
-            VehicleService.Characteristic masterWarning = vehicleService.getCharacteristic(VehicleService.Property.WARNING);
-
             if (characteristic.getData() == vehicleService.STATE_OFF)
-            {
-                // if master warning off, turn on
-                if (masterWarning.getData() == vehicleService.STATE_OFF) masterWarning.setData(vehicleService.STATE_ON);
-
                 characteristic.setData(vehicleService.STATE_WARNING_LOW);
-            }
 
             else if (characteristic.getData() == vehicleService.STATE_WARNING_LOW)
             {
                 if (isMultiState) characteristic.setData(vehicleService.STATE_WARNING_HIGH);
-                else
-                {
-                    characteristic.setData(vehicleService.STATE_OFF);
-
-                    boolean isFinal = true;
-                    ArrayList<VehicleService.Characteristic> warnings = vehicleService.getWarnings();
-
-                    // see if other warnings are still enabled
-                    for (int i = 0; i < warnings.size() && isFinal; ++i)
-                    {
-                        if (warnings.get(i).getData() == vehicleService.STATE_WARNING_LOW ||
-                                warnings.get(i).getData() == vehicleService.STATE_WARNING_HIGH)
-                            isFinal = false;
-                    }
-
-                    if (isFinal) masterWarning.setData(vehicleService.STATE_OFF);
-                }
+                else              characteristic.setData(vehicleService.STATE_OFF);
             }
 
             else if (characteristic.getData() == vehicleService.STATE_WARNING_HIGH)
-            {
                 characteristic.setData(vehicleService.STATE_OFF);
-
-                boolean isFinal = true;
-                ArrayList<VehicleService.Characteristic> warnings = vehicleService.getWarnings();
-
-                // see if other warnings are still enabled
-                for (int i = 0; i < warnings.size() && isFinal; ++i)
-                {
-                    if (warnings.get(i).getData() == vehicleService.STATE_WARNING_LOW ||
-                            warnings.get(i).getData() == vehicleService.STATE_WARNING_HIGH)
-                        isFinal = false;
-                }
-
-                if (isFinal) masterWarning.setData(vehicleService.STATE_OFF);
-            }
         }
     }
 }
