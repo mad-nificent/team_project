@@ -15,8 +15,8 @@ import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
-import android.content.Intent;
 import android.os.ParcelUuid;
+import android.util.Log;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -26,62 +26,179 @@ import java.util.UUID;
 import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
 import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTED;
 
-// contains all relevant objects and data required for bluetooth communication over the vehicle service
-public class BluetoothLE
-        extends Activity
+// manages bluetooth LE communication
+class BluetoothLE implements SendUserResponse
 {
-    Context context;
+    private Context context;
+
+    // make requests to user, update display etc.
+    private BluetoothRequest sendRequest;
+    private SendToDisplay    display;
+    private BluetoothStatus  updateStatus;
+
+    private BluetoothManager      bluetoothManager = null;                // high level management (get devices etc.)
+    private BluetoothAdapter      bluetoothAdapter = null;                // local bluetooth device
+    private BluetoothGattServer   GATTServer       = null;                // run GATT operations
+    private BluetoothGattService  service          = null;                // current GATT service
+    private List<BluetoothDevice> devices          = new ArrayList<>();   // remote devices connected
     
-    public BluetoothManager      bluetoothManager = null;                // high level management (get devices etc.)
-    public BluetoothAdapter      bluetoothAdapter = null;                // local bluetooth device
-    public BluetoothGattServer   GATTServer       = null;                // run GATT operations
-    public BluetoothGattService  service          = null;                // current GATT service
-    public List<BluetoothDevice> devices          = new ArrayList<>();   // remote devices connected
-    
-    // reports the result after starting the advertisement process, and runs a GATT server if successful
+    BluetoothLE(Activity activity, BluetoothStatus statusInterface)
+    {
+        context      = activity;
+        updateStatus = statusInterface;
+
+        // activity must handle bluetooth requests
+        if (activity instanceof BluetoothRequest) this.sendRequest = (BluetoothRequest) activity;
+        else Log.e(this.getClass().getName(), "activity is not instance of " + BluetoothRequest.class.getName());
+
+        // and handle GUI updates
+        if (activity instanceof SendToDisplay) this.display = (SendToDisplay) activity;
+        else Log.e(this.getClass().getName(), "activity is not instance of " + SendToDisplay.class.getName());
+    }
+
+    void enable()
+    {
+        sendRequest.requestLocationPermission();
+    }
+
+    @Override
+    public void locationPermissionResult(boolean isGranted)
+    {
+        if (isGranted) initialiseAdapter();
+
+        // maybe request again?
+        else display.showToast("Location is required to function.", Toast.LENGTH_LONG);
+    }
+
+    private void initialiseAdapter()
+    {
+        // get instance of the device bluetooth hardware
+        if (bluetoothManager == null) bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        if (bluetoothAdapter == null) bluetoothAdapter = bluetoothManager.getAdapter();
+
+        // request access
+        if (!bluetoothAdapter.isEnabled()) sendRequest.requestEnableBluetoothAdapter();
+    }
+
+    @Override
+    public void adapterStatus(boolean isGranted)
+    {
+        if (!isGranted) display.showToast("Bluetooth is required to function.", Toast.LENGTH_LONG);
+    }
+
+    void startAdvertising(String UUID)
+    {
+        if (bluetoothAdapter.isEnabled())
+        {
+            // adjust preferences for advertising from this device
+            AdvertiseSettings settings = new AdvertiseSettings.Builder()
+                    .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY) // consume least amount of power at the cost of higher latency
+                    .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)     // low power consumption and signal range (client device will be inside vehicle anyway)
+                    .setConnectable(true)                                           // devices can connect to subscribe to updates
+                    .build();
+
+            // include UUID in advertisement so devices can identify this peripheral
+            AdvertiseData data = new AdvertiseData.Builder()
+                    .addServiceUuid(ParcelUuid.fromString(UUID))
+                    .build();
+
+            // begin advertising
+            BluetoothLeAdvertiser advertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
+            advertiser.startAdvertising(settings, data, advertiseCallback);
+        }
+    }
+
+    // start advertising, report result if error occurred
     private AdvertiseCallback advertiseCallback = new AdvertiseCallback()
     {
         @Override
         public void onStartSuccess(AdvertiseSettings settingsInEffect)
         {
             super.onStartSuccess(settingsInEffect);
+            updateStatus.advertiseResult(true);
         }
-        
+
         @Override
         public void onStartFailure(int errorCode)
         {
             super.onStartFailure(errorCode);
-            
+
             String errorMsg = "";
-            
             switch (errorCode)
             {
                 case ADVERTISE_FAILED_ALREADY_STARTED:
-                    errorMsg = "already started!";
+                    errorMsg = "already advertising!";
                     break;
-                    
+
                 case ADVERTISE_FAILED_DATA_TOO_LARGE:
                     errorMsg = "packet is too large!";
                     break;
-                    
+
                 case ADVERTISE_FAILED_FEATURE_UNSUPPORTED:
-                    errorMsg = "not supported.";
+                    errorMsg = "feature not supported.";
                     break;
-                    
+
                 case ADVERTISE_FAILED_INTERNAL_ERROR:
                     errorMsg = "internal error.";
                     break;
-                    
+
                 case ADVERTISE_FAILED_TOO_MANY_ADVERTISERS:
-                    errorMsg = "no advertising instance available";
+                    errorMsg = "no advertising instance available.";
                     break;
             }
-            
-            showToast("Failed to start advertising: " + errorMsg, Toast.LENGTH_LONG);
+
+            updateStatus.advertiseResult(false);
+            Log.e(this.getClass().getName(), "onStartFailure() -> Advertisement failed: " + errorMsg);
         }
     };
-    
-    // manages server operations such as incoming connections, clients reading data etc.
+
+    void startGATT(String serviceUUID, ArrayList<String> characteristicUUIDS, String descriptorUUID, ArrayList<Integer> startingValues)
+    {
+        if (bluetoothManager == null || bluetoothAdapter == null || !bluetoothAdapter.isEnabled())
+        {
+            Log.e(this.getClass().getName(), "startGATT() -> Could not start GATT: Bluetooth adapter not initialised.");
+            updateStatus.GATTResult(false);
+        }
+        
+        else if (GATTServer != null || service != null)
+        {
+            Log.e(this.getClass().getName(), "startGATT() -> Could not start GATT: Already started.");
+            updateStatus.GATTResult(false);
+        }
+
+        else
+        {
+            GATTServer = bluetoothManager.openGattServer(context, gattServerCallback);
+            service = new BluetoothGattService(UUID.fromString(serviceUUID), BluetoothGattService.SERVICE_TYPE_PRIMARY);
+
+            // add each characteristic to the service
+            int i = 0;
+            for (String characteristicUUID : characteristicUUIDS)
+            {
+                BluetoothGattCharacteristic characteristic = new BluetoothGattCharacteristic(
+                        UUID.fromString(characteristicUUID),
+
+                        // supported functionality
+                        BluetoothGattCharacteristic.PROPERTY_READ |
+                                BluetoothGattCharacteristic.PROPERTY_WRITE |
+                                BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+
+                        // client access
+                        BluetoothGattCharacteristic.PERMISSION_READ);
+
+                // set starting value
+                characteristic.setValue(Integer.toString(startingValues.get(i)));
+                characteristic.addDescriptor(new BluetoothGattDescriptor(UUID.fromString(descriptorUUID), BluetoothGattDescriptor.PERMISSION_READ));
+                service.addCharacteristic(characteristic);
+
+                ++i;
+            }
+
+            GATTServer.addService(service);
+            updateStatus.GATTResult(true);
+        }
+    }
+
     private BluetoothGattServerCallback gattServerCallback = new BluetoothGattServerCallback()
     {
         // a client has connected or disconnected
@@ -89,149 +206,59 @@ public class BluetoothLE
         public void onConnectionStateChange(BluetoothDevice device, int status, int newState)
         {
             super.onConnectionStateChange(device, status, newState);
-            
+
             // add device to list
             if (newState == STATE_CONNECTED)
             {
                 devices.add(device);
-    
+
+                display.showToast("A new device has connected.", Toast.LENGTH_SHORT);
+                display.updateDeviceCount(devices.size());
+
                 // send data to new device
                 for (int i = 0; i < service.getCharacteristics().size(); ++i)
                     GATTServer.notifyCharacteristicChanged(device, service.getCharacteristics().get(i), false);
-    
-                showToast("A new device has connected.", Toast.LENGTH_SHORT);
             }
-            
+
             // remove device
             else if (newState == STATE_DISCONNECTED)
             {
                 devices.remove(device);
-                showToast("A device has disconnected.", Toast.LENGTH_SHORT);
+
+                display.showToast("A device has disconnected.", Toast.LENGTH_SHORT);
+                display.updateDeviceCount(devices.size());
             }
         }
-        
+
         @Override
         public void onServiceAdded(int status, BluetoothGattService service)
         {
-            if (status != BluetoothGatt.GATT_SUCCESS)
-                showToast("Could not add service, error code: " + status,Toast.LENGTH_LONG);
+            boolean serviceAdded = false;
+
+            if (status == BluetoothGatt.GATT_SUCCESS) serviceAdded = true;
+            else Log.e(this.getClass().getName(), "onServiceAdded() -> Failed to add service. Code: " + status);
+
+            updateStatus.serviceAddedResult(serviceAdded);
         }
-        
-        // a client wants to read some data
+
         @Override
         public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic)
         {
             super.onCharacteristicReadRequest(device, requestId, offset, characteristic);
-            
-            // send the value to the device
             GATTServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, characteristic.getValue());
         }
     };
-    
-    public BluetoothLE(Context context)
+
+    void updateCharacteristic(String UUID, String data)
     {
-        this.context = context;
+        BluetoothGattCharacteristic characteristic = service.getCharacteristic(java.util.UUID.fromString(UUID));
+        characteristic.setValue(data);
+        notifyDevices(characteristic);
     }
-    
-    private void showToast(final String message, final int length)
+
+    private void notifyDevices(BluetoothGattCharacteristic characteristic)
     {
-        if (length == Toast.LENGTH_SHORT || length == Toast.LENGTH_LONG)
-        {
-            runOnUiThread(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    Toast toast = Toast.makeText(context, message, length);
-                    toast.show();
-                }
-            });
-        }
-    }
-    
-    public Boolean setDefaultBluetoothAdapter()
-    {
-        // get instance of the devices bluetooth hardware
-        if (bluetoothManager == null) bluetoothManager = (BluetoothManager)context.getSystemService(BLUETOOTH_SERVICE);
-        if (bluetoothAdapter == null) bluetoothAdapter = bluetoothManager.getAdapter();
-        
-        return bluetoothAdapter.isEnabled();
-    }
-    
-    // begin advertising the device
-    public boolean startAdvertising(String UUID)
-    {
-        if (!bluetoothAdapter.isEnabled()) return false;
-        
-        // adjust preferences for advertising from this device
-        AdvertiseSettings settings = new AdvertiseSettings.Builder()
-                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY) // consume least amount of power at the cost of higher latency
-                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)     // low power consumption and signal range (client device will be inside vehicle anyway)
-                .setConnectable(true)                                           // devices can connect to subscribe to updates
-                .build();
-        
-        // include UUID in advertisement so devices can identify this peripheral
-        AdvertiseData data = new AdvertiseData.Builder()
-                .addServiceUuid(ParcelUuid.fromString(UUID))
-                .build();
-        
-        // begin advertising
-        BluetoothLeAdvertiser advertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-        advertiser.startAdvertising(settings, data, advertiseCallback);
-        
-        return true;
-    }
-    
-    // construct a GATT server with the vehicle service and data to advertise
-    public boolean startGATT(String serviceUUID, ArrayList<String> characteristicUUIDS, ArrayList<Integer> data, String descriptor)
-    {
-        if (bluetoothManager == null || bluetoothAdapter == null || !bluetoothAdapter.isEnabled())
-        {
-            showToast("Cannot start GATT server, bluetooth not initialised", Toast.LENGTH_LONG);
-            return false;
-        }
-        
-        if (GATTServer != null || service != null)
-        {
-            showToast("GATT already running!", Toast.LENGTH_LONG);
-            return false;
-        }
-        
-        // create new GATT server
-        GATTServer = bluetoothManager.openGattServer(context, gattServerCallback);
-
-        // create new GATT service
-        service = new BluetoothGattService(UUID.fromString(serviceUUID), BluetoothGattService.SERVICE_TYPE_PRIMARY);
-
-        // add each characteristic to the service
-        int i = 0;
-        for (String cUUID : characteristicUUIDS)
-        {
-            BluetoothGattCharacteristic characteristic = new BluetoothGattCharacteristic(
-                    // UUID (obtained from UUID map)
-                    UUID.fromString(cUUID),
-            
-                    // supported functionality
-                  BluetoothGattCharacteristic.PROPERTY_READ  |
-                            BluetoothGattCharacteristic.PROPERTY_WRITE |
-                            BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-            
-                    // client access
-                    BluetoothGattCharacteristic.PERMISSION_READ);
-    
-            // set starting value
-            characteristic.setValue(Integer.toString(data.get(i)));
-
-            characteristic.addDescriptor(new BluetoothGattDescriptor(UUID.fromString(descriptor), BluetoothGattDescriptor.PERMISSION_READ));
-
-            // save characteristic to service
-            service.addCharacteristic(characteristic);
-            
-            ++i;
-        }
-
-        GATTServer.addService(service);
-        
-        return true;
+        for (int i = 0; i < devices.size(); ++i)
+            GATTServer.notifyCharacteristicChanged(devices.get(i), characteristic, false);
     }
 }

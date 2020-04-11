@@ -185,44 +185,6 @@
 
         </TableRow>
 
-        <TableRow
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <Button
-                android:id="@+id/btnDecreaseRPM"
-
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_span="1"
-                android:layout_weight="1"
-
-                android:text="-"
-                android:onClick="onMinusClick"/>
-
-            <EditText
-                android:id="@+id/txtRPM"
-
-                android:layout_width="0dp"
-                android:layout_span="2"
-                android:layout_weight="2"
-
-                android:hint="RPM"
-                android:textAlignment="center"
-                android:inputType="number"/>
-
-            <Button
-                android:id="@+id/btnIncreaseRPM"
-
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_span="1"
-                android:layout_weight="1"
-
-                android:text="+"
-                android:onClick="onPlusClick"/>
-
-        </TableRow>
 
         <TableRow
             android:layout_width="match_parent"

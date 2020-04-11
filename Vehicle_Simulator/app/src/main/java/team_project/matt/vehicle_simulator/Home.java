@@ -1,134 +1,262 @@
 package team_project.matt.vehicle_simulator;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
-import android.graphics.Color;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import java.util.ArrayList;
 import java.util.Locale;
 
-public class Home
-        extends AppCompatActivity
-        implements ActivityCompat.OnRequestPermissionsResultCallback
+public class Home extends AppCompatActivity implements SendToDisplay, BluetoothRequest, ActivityCompat.OnRequestPermissionsResultCallback
 {
-    // vehicle service manages characteristics and communicates changes to BLE
-    VehicleService vehicleService;
-    
-    // location permission required for BLE to work
     final int          REQUEST_CODE_LOCATION = 1;
     final int REQUEST_CODE_BLUETOOTH_ENABLED = 2;
-    
+
+    // respond to requests etc.
+    SendUserResponse sendBluetoothResponse;
+
     @Override
-    protected void onCreate(Bundle savedInstanceState)
+    public void requestLocationPermission()
     {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_home);
-        
-        requestPermissions();   // will close down if permission denied
-        startBluetoothDevice();
-    }
-    
-    private void requestPermissions()
-    {
-        // does the app have location permissions?
-        int currentLocationPermission = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION);
-    
-        // no, request the permission from the user
-        if (currentLocationPermission != PackageManager.PERMISSION_GRANTED)
+        int locationPermission = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION);
+
+        // not granted yet
+        if (locationPermission == PackageManager.PERMISSION_DENIED)
+        {
+            // ask for user choice and respond to request
             requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_CODE_LOCATION);
+        }
+
+        // already granted, immediately respond
+        else sendBluetoothResponse.locationPermissionResult(true);
     }
-    
+
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
     {
-        switch(requestCode)
+        if (requestCode == REQUEST_CODE_LOCATION)
         {
-            // location permission
-            case REQUEST_CODE_LOCATION:
-            {
-                // will exit if not granted
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_DENIED)
-                {
-                    Toast toast = Toast.makeText(this, "App requires location permissions to function. Closing down.", Toast.LENGTH_LONG);
-                    toast.show();
-                    
-                    finish();
-                }
-            }
+            boolean isPermissionGranted = false;
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) isPermissionGranted = true;
+            sendBluetoothResponse.locationPermissionResult(isPermissionGranted);
         }
     }
-    
-    public void startBluetoothDevice()
+
+    @Override
+    public void requestEnableBluetoothAdapter()
     {
-        vehicleService = new VehicleService(new BluetoothLE(getApplicationContext()));
-        
-        // start bluetooth hardware in app, returns false if bluetooth off
-        if (!vehicleService.bluetoothLE.setDefaultBluetoothAdapter())
-        {
-            // request bluetooth be turned on
-            Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(intent, REQUEST_CODE_BLUETOOTH_ENABLED);
-        }
-        
+        Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+        startActivityForResult(intent, REQUEST_CODE_BLUETOOTH_ENABLED);
     }
-    
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data)
     {
-        switch(requestCode)
+        if (requestCode == REQUEST_CODE_BLUETOOTH_ENABLED)
         {
-            case REQUEST_CODE_BLUETOOTH_ENABLED:
+            boolean isEnabled = false;
+            if (resultCode == RESULT_OK) isEnabled = true;
+            sendBluetoothResponse.adapterStatus(isEnabled);
+        }
+    }
+
+    @Override
+    public void showToast(final String message, final int length)
+    {
+        Toast.makeText(this, message, length).show();
+    }
+
+    @Override
+    public void updateDeviceCount(int noDevices)
+    {
+
+    }
+
+    class SpeedManager
+    {
+        private int IDLE = 0, ACCELERATING = 1, BRAKING = 2;
+
+        private int      state = IDLE;
+        private EditText txtSpeed;
+        private int      speed;
+
+        SpeedManager()
+        {
+            txtSpeed = findViewById(R.id.txtSpeed);
+            speed = Integer.parseInt(txtSpeed.getText().toString());
+        }
+
+        void accelerate()
+        {
+            if (state == IDLE)
             {
-                if (resultCode != RESULT_OK)
+                // start
+                state = ACCELERATING;
+
+                // run in the background
+                new Thread(new Runnable()
                 {
-                    Toast toast = Toast.makeText(this, "App requires bluetooth to function.", Toast.LENGTH_LONG);
-                    toast.show();
-                }
-    
-                break;
+                    @Override
+                    public void run()
+                    {
+                        final double increaseRate  = 1.0075;
+                        final int    baseSleepTime = 75;
+
+                        // increase speed
+                        while (state == ACCELERATING)
+                        {
+                            speed += 1;
+                            Log.d("Speed", "Updated speed: " + Integer.toString(speed));
+
+                            // update UI
+                            runOnUiThread(new Runnable()
+                            {
+                                @Override
+                                public void run()
+                                {
+                                    txtSpeed.setText(String.valueOf(speed));
+                                }
+                            });
+
+                            try
+                            {
+                                double sleepTime = baseSleepTime * Math.pow(increaseRate, speed);
+                                Log.d("sleeptime", "sleep: " + sleepTime);
+
+                                Thread.sleep((int)Math.ceil(sleepTime));
+                            }
+
+                            catch (InterruptedException e)
+                            {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }).start();
+            }
+        }
+
+        void decelerate()
+        {
+            if (state != IDLE)
+            {
+                // start
+                state = IDLE;
+
+                // run in the background
+                new Thread(new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        // decrease speed
+                        while (state == IDLE)
+                        {
+                            speed -= 1;
+                            Log.d("Speed", "Updated speed: " + Integer.toString(speed));
+
+                            // update UI
+                            runOnUiThread(new Runnable()
+                            {
+                                @Override
+                                public void run()
+                                {
+                                    txtSpeed.setText(String.valueOf(speed));
+                                }
+                            });
+
+                            try
+                            {
+                                Thread.sleep(500);
+                            }
+
+                            catch (InterruptedException e)
+                            {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }).start();
+            }
+        }
+
+        void brake()
+        {
+            if (state != BRAKING)
+            {
+                // start
+                state = BRAKING;
+
+                // run in the background
+                new Thread(new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        final int sleepTime = 10;
+
+                        // decrease speed
+                        while (state == BRAKING)
+                        {
+                            speed -= 1;
+                            Log.d("Speed", "Updated speed: " + Integer.toString(speed));
+
+                            // update UI
+                            runOnUiThread(new Runnable()
+                            {
+                                @Override
+                                public void run()
+                                {
+                                    txtSpeed.setText(String.valueOf(speed));
+                                }
+                            });
+
+                            try
+                            {
+                                Thread.sleep(sleepTime);
+                            }
+
+                            catch (InterruptedException e)
+                            {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }).start();
             }
         }
     }
-    
-    // starts the server and advertising process
-    public void onStartServerClick(View view)
+
+    // vehicle service manages characteristics and communicates changes to BLE
+    VehicleService vehicleService;
+
+    protected void onCreate(Bundle savedInstanceState)
     {
-        // start advertising, returns false if bluetooth disabled
-        if (!vehicleService.bluetoothLE.startAdvertising(vehicleService.getUUID()))
-            return;
-        
-        // start GATT, returns false if already started
-        if (!vehicleService.bluetoothLE.startGATT(vehicleService.getUUID(), vehicleService.getCharacteristicUUIDs(), vehicleService.getCharacteristicFormats(), vehicleService.getDescriptor()))
-            return;
-        
-        vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(100);
-        vehicleService.getCharacteristic(VehicleService.Property.RANGE).setData(0);                             //get from shared prefs later
-        vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData(20);                     // safe temp 20-45c
-        vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(0);
-        vehicleService.getCharacteristic(VehicleService.Property.RPM).setData(0);
-        vehicleService.getCharacteristic(VehicleService.Property.DISTANCE).setData(0);
-        vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(vehicleService.STATE_OFF);
-        vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(vehicleService.STATE_OFF);
-        vehicleService.getCharacteristic(VehicleService.Property.HANDBRAKE).setData(vehicleService.STATE_ON);
-        vehicleService.getCharacteristic(VehicleService.Property.SEATBELT).setData(vehicleService.STATE_OFF);
-        vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(vehicleService.STATE_OFF);
-        vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW).setData(vehicleService.STATE_OFF);
-        vehicleService.getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(vehicleService.STATE_OFF);
-        vehicleService.getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(vehicleService.STATE_OFF);
-        vehicleService.getCharacteristic(VehicleService.Property.ABS_ERR).setData(vehicleService.STATE_OFF);
-        vehicleService.getCharacteristic(VehicleService.Property.ENGIN_ERR).setData(vehicleService.STATE_OFF);
-        
-        loadVehicleInterface();
+        super.onCreate(savedInstanceState);
+        // create a temp screen
+
+        vehicleService = new VehicleService(this);
+        sendBluetoothResponse = vehicleService;
+
+        vehicleService.start();
+
+        setContentView(R.layout.prototype_interface);
+
+//        loadVehicleInterface();
     }
-    
+
+    @SuppressLint("ClickableViewAccessibility")
     private void loadVehicleInterface()
     {
         setContentView(R.layout.prototype_interface);
@@ -141,6 +269,40 @@ public class Home
     
         VehicleService.Characteristic speedData = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
         speed.setText(String.format(Locale.getDefault(), "%d", speedData.getData()));
+
+        final SpeedManager speedManager = new SpeedManager();
+
+        Button btnAccelerate = findViewById(R.id.btnIncreaseSpeed);
+        btnAccelerate.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    speedManager.accelerate();
+
+                else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_POINTER_UP)
+                    speedManager.decelerate();
+
+                return true;
+            }
+        });
+
+        Button btnBrake = findViewById(R.id.btnDecreaseSpeed);
+        btnBrake.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    speedManager.brake();
+
+                else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_POINTER_UP)
+                    speedManager.decelerate();
+
+                return true;
+            }
+        });
     }
 
     public void onMinusClick(View view)
@@ -169,20 +331,6 @@ public class Home
             {
                 txtView = findViewById(R.id.txtTemp);
                 characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP);
-                break;
-            }
-
-            case R.id.btnDecreaseSpeed:
-            {
-                txtView = findViewById(R.id.txtSpeed);
-                characteristic = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
-                break;
-            }
-
-            case R.id.btnDecreaseRPM:
-            {
-                txtView = findViewById(R.id.txtRPM);
-                characteristic = vehicleService.getCharacteristic(VehicleService.Property.RPM);
                 break;
             }
 
@@ -238,22 +386,6 @@ public class Home
                 txtView = findViewById(R.id.txtTemp);
                 characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP);
                 max = 100;
-                break;
-            }
-
-            case R.id.btnIncreaseSpeed:
-            {
-                txtView = findViewById(R.id.txtSpeed);
-                characteristic = vehicleService.getCharacteristic(VehicleService.Property.SPEED);
-                max = 120;
-                break;
-            }
-
-            case R.id.btnIncreaseRPM:
-            {
-                txtView = findViewById(R.id.txtRPM);
-                characteristic = vehicleService.getCharacteristic(VehicleService.Property.RPM);
-                max = 4000;
                 break;
             }
 

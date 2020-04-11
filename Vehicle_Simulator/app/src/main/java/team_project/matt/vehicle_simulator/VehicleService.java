@@ -1,23 +1,31 @@
 package team_project.matt.vehicle_simulator;
 
+import android.app.Activity;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.widget.TimePicker;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
-public class VehicleService
+public class VehicleService implements SendUserResponse, BluetoothStatus
 {
-    BluetoothLE bluetoothLE;
-    
+    private SendToDisplay    display;
+    private SendUserResponse handleResponse;
+
+    private BluetoothLE bluetoothDevice;
+
     private final String       UUID = "dee0e505-9680-430e-a4c4-a225905ce33d";
     private final String descriptor = "00002902-0000-1000-8000-00805f9b34fb";
-    
+
+    private boolean serviceAdded = false;
+
     enum Property
     {
         // battery data
         BATTERY_LVL, RANGE, BATTERY_TEMP,
         
         // car data
-        SPEED, RPM, DISTANCE, TURN_SIGNAL, LIGHTS, HANDBRAKE,
+        SPEED, DISTANCE, TURN_SIGNAL, LIGHTS, HANDBRAKE,
         
         // warnings
         SEATBELT, WIPER_LOW, TYRE_PRESSURE_LOW, AIRBAG_ERR, BRAKE_ERR, ABS_ERR, ENGIN_ERR
@@ -65,39 +73,63 @@ public class VehicleService
         public void setData(int data)
         {
             if (format == FORMAT_NUMBER) this.data = data;
-            
             else if (format == FORMAT_STATE)
             {
                 for (int value : supportedValues)
                     if (data == value)
+                    {
                         this.data = data;
+                        break;
+                    }
             }
             
-            if (bluetoothLE.service != null)
-            {
-                // update characteristic on service and notify change
-                BluetoothGattCharacteristic characteristic = bluetoothLE.service.getCharacteristic(java.util.UUID.fromString(this.UUID));
-    
-                characteristic.setValue(Integer.toString(this.data));
-    
-                for (int i = 0; i < bluetoothLE.devices.size(); ++i)
-                    bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), characteristic, false);
-            }
+            if (serviceAdded) bluetoothDevice.updateCharacteristic(this.UUID, Integer.toString(this.data));
         }
         
-        public String                        getUUID() { return UUID; }
-        public Property                  getProperty() { return property; }
-        public int                         getFormat() { return format; }
-        public ArrayList<Integer> getSupportedValues() { return supportedValues; }
-        public int                           getData() { return data; }
+        String                        getUUID() { return UUID; }
+        Property                  getProperty() { return property; }
+        int                         getFormat() { return format; }
+        ArrayList<Integer> getSupportedValues() { return supportedValues; }
+        int                           getData() { return data; }
     }
     
     private ArrayList<Characteristic> characteristics = new ArrayList<>();
-    
-    VehicleService(BluetoothLE bluetoothLE)
+
+    VehicleService(Activity activity)
     {
-        this.bluetoothLE = bluetoothLE;
-        
+        bluetoothDevice = new BluetoothLE(activity, this);
+        handleResponse = bluetoothDevice;
+    }
+
+    void start()
+    {
+        // asynchronous call
+        // - will check location permission and bluetooth status
+        // - if enabled successfully, sendAdapterEnabledResult() will continue process
+        bluetoothDevice.enable();
+    }
+
+    @Override
+    public void locationPermissionResult(boolean isGranted)
+    {
+        handleResponse.locationPermissionResult(isGranted);
+    }
+
+    @Override
+    public void adapterStatus(boolean isGranted)
+    {
+        handleResponse.adapterStatus(isGranted);
+        if (isGranted) setup();
+    }
+
+    private void setup()
+    {
+        buildCharacteristics();
+        bluetoothDevice.startAdvertising(UUID);
+    }
+
+    private void buildCharacteristics()
+    {
         // battery characteristics
         //------------------------------------------------------------
         Characteristic newCharacteristic = new Characteristic
@@ -127,13 +159,6 @@ public class VehicleService
         newCharacteristic = new Characteristic
                 ("7b9b53ff-5421-4bdf-beb0-ca8c949542c1",
                         Property.SPEED,
-                        Characteristic.FORMAT_NUMBER);
-        
-        characteristics.add(newCharacteristic);
-        
-        newCharacteristic = new Characteristic
-                ("0d6baf82-a79d-4660-a153-b72c6cbd63ee",
-                        Property.RPM,
                         Characteristic.FORMAT_NUMBER);
         
         characteristics.add(newCharacteristic);
@@ -255,9 +280,59 @@ public class VehicleService
         characteristics.add(newCharacteristic);
         //------------------------------------------------------------
     }
-    
-    public String getUUID() { return UUID; }
 
+    @Override
+    public void advertiseResult(boolean started)
+    {
+        if (started)
+        {
+            ArrayList<String> UUIDs = new ArrayList<>();
+            ArrayList<Integer> defaultValues = new ArrayList<>();
+
+            for (Characteristic characteristic : characteristics)
+            {
+                UUIDs.add(characteristic.UUID);
+                defaultValues.add(characteristic.format);
+            }
+
+            // does it need to send formats??
+            bluetoothDevice.startGATT(UUID, UUIDs, descriptor, defaultValues);
+
+            getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(100);
+            getCharacteristic(VehicleService.Property.RANGE).setData(0);                             // get from shared prefs later
+            getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData(20);                     // safe temp 20-45c
+            getCharacteristic(VehicleService.Property.SPEED).setData(0);
+            getCharacteristic(VehicleService.Property.DISTANCE).setData(0);
+            getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(STATE_OFF);
+            getCharacteristic(VehicleService.Property.LIGHTS).setData(STATE_OFF);
+            getCharacteristic(VehicleService.Property.HANDBRAKE).setData(STATE_ON);
+            getCharacteristic(VehicleService.Property.SEATBELT).setData(STATE_OFF);
+            getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(STATE_OFF);
+            getCharacteristic(VehicleService.Property.WIPER_LOW).setData(STATE_OFF);
+            getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(STATE_OFF);
+            getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(STATE_OFF);
+            getCharacteristic(VehicleService.Property.ABS_ERR).setData(STATE_OFF);
+            getCharacteristic(VehicleService.Property.ENGIN_ERR).setData(STATE_OFF);
+
+        }
+
+        else display.showToast("Could not broadcast device.", Toast.LENGTH_LONG);
+    }
+
+    @Override
+    public void serviceAddedResult(boolean added)
+    {
+        if (!added) display.showToast("Could not start vehicle.", Toast.LENGTH_LONG);
+        else serviceAdded = true;
+    }
+
+    @Override
+    public void GATTResult(boolean started)
+    {
+        if (!started) display.showToast("Could not start vehicle.", Toast.LENGTH_LONG);
+    }
+    
+    public String getUUID()       { return UUID; }
     public String getDescriptor() { return descriptor; }
 
     public Characteristic getCharacteristic(Property property)
@@ -272,40 +347,5 @@ public class VehicleService
     public ArrayList<Characteristic> getCharacteristics()
     {
         return characteristics;
-    }
-
-    public ArrayList<Characteristic> getWarnings()
-    {
-        ArrayList<Characteristic> warnings = new ArrayList<>();
-
-        warnings.add(getCharacteristic(Property.SEATBELT));
-        warnings.add(getCharacteristic(Property.WIPER_LOW));
-        warnings.add(getCharacteristic(Property.TYRE_PRESSURE_LOW));
-        warnings.add(getCharacteristic(Property.AIRBAG_ERR));
-        warnings.add(getCharacteristic(Property.BRAKE_ERR));
-        warnings.add(getCharacteristic(Property.ABS_ERR));
-        warnings.add(getCharacteristic(Property.ENGIN_ERR));
-
-        return warnings;
-    }
-    
-    public ArrayList<String> getCharacteristicUUIDs()
-    {
-        ArrayList<String> UUIDs =  new ArrayList<>();
-        
-        for (Characteristic characteristic : characteristics)
-            UUIDs.add(characteristic.getUUID());
-        
-        return UUIDs;
-    }
-    
-    public ArrayList<Integer> getCharacteristicFormats()
-    {
-        ArrayList<Integer> formats =  new ArrayList<>();
-        
-        for (Characteristic characteristic : characteristics)
-            formats.add(characteristic.getFormat());
-        
-        return formats;
     }
 }
