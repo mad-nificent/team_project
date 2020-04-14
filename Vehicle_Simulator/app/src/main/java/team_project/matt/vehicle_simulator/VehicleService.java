@@ -1,16 +1,12 @@
 package team_project.matt.vehicle_simulator;
 
-import android.app.Activity;
-import android.bluetooth.BluetoothGattCharacteristic;
-import android.widget.TimePicker;
 import android.widget.Toast;
 
 import java.util.ArrayList;
 
-public class VehicleService implements SendUserResponse, BluetoothStatus
+public class VehicleService implements BluetoothServerStatus
 {
-    private SendToDisplay    display;
-    private SendUserResponse handleResponse;
+    private Display display;
 
     private BluetoothLE bluetoothDevice;
 
@@ -32,16 +28,16 @@ public class VehicleService implements SendUserResponse, BluetoothStatus
     }
     
     // property states
-    public final int         STATE_OFF = 0,           STATE_ON = 1;
-    public final int STATE_SIGNAL_LEFT = 1, STATE_SIGNAL_RIGHT = 2;
-    public final int  STATE_LIGHTS_LOW = 1,  STATE_LIGHTS_HIGH = 2, STATE_LIGHTS_ERR = 3;
-    public final int STATE_WARNING_LOW = 1, STATE_WARNING_HIGH = 2;
+    final int         STATE_OFF = 0,           STATE_ON = 1;
+    final int STATE_SIGNAL_LEFT = 1, STATE_SIGNAL_RIGHT = 2;
+    final int  STATE_LIGHTS_LOW = 1,  STATE_LIGHTS_HIGH = 2, STATE_LIGHTS_ERR = 3;
+    final int STATE_WARNING_LOW = 1, STATE_WARNING_HIGH = 2;
     
-    public class Characteristic
+    class Characteristic
     {
         // supported types
-        public static final int FORMAT_NUMBER = 0,  // regular numerical value
-                                 FORMAT_STATE = 1;  // finite number of states (on, off etc.)
+        static final int FORMAT_NUMBER = 0,  // regular numerical value
+                         FORMAT_STATE = 1;   // finite number of states (on, off etc.)
         
         private String             UUID;
         private Property           property;
@@ -59,18 +55,18 @@ public class VehicleService implements SendUserResponse, BluetoothStatus
             this.supportedValues = new ArrayList<>();
         }
         
-        public void addSupportedValue(int supportedValue)
+        void addSupportedValue(int supportedValue)
         {
             if (format == FORMAT_STATE) supportedValues.add(supportedValue);
         }
         
-        public void removeSupportedValue(int index)
+        void removeSupportedValue(int index)
         {
             if (index < supportedValues.size())
                 supportedValues.remove(index);
         }
         
-        public void setData(int data)
+        void setData(int data)
         {
             if (format == FORMAT_NUMBER) this.data = data;
             else if (format == FORMAT_STATE)
@@ -95,37 +91,26 @@ public class VehicleService implements SendUserResponse, BluetoothStatus
     
     private ArrayList<Characteristic> characteristics = new ArrayList<>();
 
-    VehicleService(Activity activity)
+    void beginSetup(BluetoothLE bluetoothDevice, Display display)
     {
-        bluetoothDevice = new BluetoothLE(activity, this);
-        handleResponse = bluetoothDevice;
-    }
+        this.bluetoothDevice = bluetoothDevice;
+        this.display = display;
 
-    void start()
-    {
         // asynchronous call
         // - will check location permission and bluetooth status
         // - if enabled successfully, sendAdapterEnabledResult() will continue process
         bluetoothDevice.enable();
     }
 
-    @Override
-    public void locationPermissionResult(boolean isGranted)
+    void start()
     {
-        handleResponse.locationPermissionResult(isGranted);
-    }
+        if (bluetoothDevice.isEnabled())
+        {
+            buildCharacteristics();
+            bluetoothDevice.startAdvertising(UUID);
+        }
 
-    @Override
-    public void adapterStatus(boolean isGranted)
-    {
-        handleResponse.adapterStatus(isGranted);
-        if (isGranted) setup();
-    }
-
-    private void setup()
-    {
-        buildCharacteristics();
-        bluetoothDevice.startAdvertising(UUID);
+        else display.showToast("Bluetooth device is not enabled.", Toast.LENGTH_LONG);
     }
 
     private void buildCharacteristics()
@@ -284,39 +269,39 @@ public class VehicleService implements SendUserResponse, BluetoothStatus
     @Override
     public void advertiseResult(boolean started)
     {
-        if (started)
+        if (started) startGATT();
+        else display.showToast("Could not broadcast device.", Toast.LENGTH_LONG);
+    }
+
+    private void startGATT()
+    {
+        ArrayList<String> UUIDs = new ArrayList<>();
+        ArrayList<Integer> defaultValues = new ArrayList<>();
+
+        for (Characteristic characteristic : characteristics)
         {
-            ArrayList<String> UUIDs = new ArrayList<>();
-            ArrayList<Integer> defaultValues = new ArrayList<>();
-
-            for (Characteristic characteristic : characteristics)
-            {
-                UUIDs.add(characteristic.UUID);
-                defaultValues.add(characteristic.format);
-            }
-
-            // does it need to send formats??
-            bluetoothDevice.startGATT(UUID, UUIDs, descriptor, defaultValues);
-
-            getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(100);
-            getCharacteristic(VehicleService.Property.RANGE).setData(0);                             // get from shared prefs later
-            getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData(20);                     // safe temp 20-45c
-            getCharacteristic(VehicleService.Property.SPEED).setData(0);
-            getCharacteristic(VehicleService.Property.DISTANCE).setData(0);
-            getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(STATE_OFF);
-            getCharacteristic(VehicleService.Property.LIGHTS).setData(STATE_OFF);
-            getCharacteristic(VehicleService.Property.HANDBRAKE).setData(STATE_ON);
-            getCharacteristic(VehicleService.Property.SEATBELT).setData(STATE_OFF);
-            getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(STATE_OFF);
-            getCharacteristic(VehicleService.Property.WIPER_LOW).setData(STATE_OFF);
-            getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(STATE_OFF);
-            getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(STATE_OFF);
-            getCharacteristic(VehicleService.Property.ABS_ERR).setData(STATE_OFF);
-            getCharacteristic(VehicleService.Property.ENGIN_ERR).setData(STATE_OFF);
-
+            UUIDs.add(characteristic.UUID);
+            defaultValues.add(characteristic.format);
         }
 
-        else display.showToast("Could not broadcast device.", Toast.LENGTH_LONG);
+        // does it need to send formats??
+        bluetoothDevice.startGATT(UUID, UUIDs, descriptor, defaultValues);
+
+        getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(100);
+        getCharacteristic(VehicleService.Property.RANGE).setData(0);                             // get from shared prefs later
+        getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData(20);                     // safe temp 20-45c
+        getCharacteristic(VehicleService.Property.SPEED).setData(0);
+        getCharacteristic(VehicleService.Property.DISTANCE).setData(0);
+        getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(STATE_OFF);
+        getCharacteristic(VehicleService.Property.LIGHTS).setData(STATE_OFF);
+        getCharacteristic(VehicleService.Property.HANDBRAKE).setData(STATE_ON);
+        getCharacteristic(VehicleService.Property.SEATBELT).setData(STATE_OFF);
+        getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(STATE_OFF);
+        getCharacteristic(VehicleService.Property.WIPER_LOW).setData(STATE_OFF);
+        getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(STATE_OFF);
+        getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(STATE_OFF);
+        getCharacteristic(VehicleService.Property.ABS_ERR).setData(STATE_OFF);
+        getCharacteristic(VehicleService.Property.ENGIN_ERR).setData(STATE_OFF);
     }
 
     @Override
@@ -330,12 +315,18 @@ public class VehicleService implements SendUserResponse, BluetoothStatus
     public void GATTResult(boolean started)
     {
         if (!started) display.showToast("Could not start vehicle.", Toast.LENGTH_LONG);
+        else display.vehicleStarted();
+    }
+
+    void stop()
+    {
+        bluetoothDevice.stop();
     }
     
     public String getUUID()       { return UUID; }
     public String getDescriptor() { return descriptor; }
 
-    public Characteristic getCharacteristic(Property property)
+    Characteristic getCharacteristic(Property property)
     {
         for (Characteristic characteristic : characteristics)
             if (property == characteristic.getProperty())
@@ -344,7 +335,7 @@ public class VehicleService implements SendUserResponse, BluetoothStatus
         return null;
     }
     
-    public ArrayList<Characteristic> getCharacteristics()
+    ArrayList<Characteristic> getCharacteristics()
     {
         return characteristics;
     }

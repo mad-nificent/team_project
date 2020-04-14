@@ -24,8 +24,11 @@ public class Start extends AppCompatActivity implements View.OnTouchListener
     @Override
     public boolean onTouch(View v, MotionEvent event)
     {
-        Intent intent = new Intent(this, Home.class);
-        startActivity(intent);
+        if (event.getAction() == MotionEvent.ACTION_DOWN)
+        {
+            Intent intent = new Intent(this, Home.class);
+            startActivity(intent);
+        }
 
         return true;
     }
