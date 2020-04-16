@@ -15,13 +15,11 @@ class SpeedManager
     private final int    BASE_BRAKING_RATE       = 10;
 
     private State state = State.IDLE;
+    private int speed   = MIN_SPEED;
 
-    private VehicleService vehicleService;
+    private VehicleStatus updateStatus;
 
-    SpeedManager(VehicleService vehicleService)
-    {
-        this.vehicleService = vehicleService;
-    }
+    SpeedManager(VehicleStatus vehicleStatus) { updateStatus = vehicleStatus; }
 
     void accelerate()
     {
@@ -36,15 +34,13 @@ class SpeedManager
                 @Override
                 public void run()
                 {
-                    int speed = vehicleService.getCharacteristic(VehicleService.Property.SPEED).getData();
-
                     // state can be affected by other threads, check still throttling
                     while (state == State.ACCELERATING)
                     {
                         if (speed < MAX_SPEED)
                         {
                             speed += 1;
-                            vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(speed);
+                            updateStatus.reportSpeed(speed);
                         }
 
                         try
@@ -76,15 +72,13 @@ class SpeedManager
                 @Override
                 public void run()
                 {
-                    int speed = vehicleService.getCharacteristic(VehicleService.Property.SPEED).getData();
-
                     // state can be affected by other threads, check still idling
                     while (state == State.IDLE)
                     {
                         if (speed > MIN_SPEED)
                         {
                             speed -= 1;
-                            vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(speed);
+                            updateStatus.reportSpeed(speed);
                         }
 
                         // slowly decelerate
@@ -110,15 +104,13 @@ class SpeedManager
                 @Override
                 public void run()
                 {
-                    int speed = vehicleService.getCharacteristic(VehicleService.Property.SPEED).getData();
-
                     // state can be affected by other threads, check still braking
                     while (state == State.BRAKING)
                     {
                         if (speed > MIN_SPEED)
                         {
                             speed -= 1;
-                            vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(speed);
+                            updateStatus.reportSpeed(speed);
                         }
 
                         // quickly decelerate
@@ -130,4 +122,7 @@ class SpeedManager
             }).start();
         }
     }
+
+    int   getSpeed() { return speed; }
+    State getState() { return state; }
 }

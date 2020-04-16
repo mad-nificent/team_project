@@ -43,12 +43,12 @@ public class Home extends AppCompatActivity
         // ble will receive user responses to requests
         respond = bluetoothDevice;
 
+        // create interface to vehicle
+        vehicle = new VehicleManager(vehicleService, this);
+
         // initiate setup of ble (requests permissions, enable bluetooth device etc.)
         // this runs asynchronously, and results are received through interface
         vehicleService.beginSetup(bluetoothDevice, this);
-
-        // create interface to vehicle
-        vehicle = new VehicleManager(vehicleService);
     }
 
     // once ble is started, it will call this method to request location permission from the user
@@ -149,7 +149,7 @@ public class Home extends AppCompatActivity
                     vehicle.accelerate();
 
                 else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_POINTER_UP)
-                    vehicle.decelerate();
+                    vehicle.idle();
 
                 return true;
             }
@@ -165,9 +165,57 @@ public class Home extends AppCompatActivity
                     vehicle.brake();
 
                 else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_POINTER_UP)
-                    vehicle.decelerate();
+                    vehicle.idle();
 
                 return true;
+            }
+        });
+    }
+
+    @Override
+    public void chargeMode(boolean isCharging)
+    {
+        // switch off controls
+    }
+
+    @Override
+    public void updateChargeLevel(final int charge)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                EditText txtBattery = findViewById(R.id.txtBattery);
+                txtBattery.setText(String.format(Locale.getDefault(), "%d", charge) + "%");
+            }
+        });
+    }
+
+    @Override
+    public void updateRange(final int milesLeft)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                EditText txtRange = findViewById(R.id.txtRange);
+                txtRange.setText(String.format(Locale.getDefault(), "%d", milesLeft) + " miles left");
+            }
+        });
+    }
+
+    @Override
+    public void updateSpeed(final int speed)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                EditText txtSpeed = findViewById(R.id.txtSpeed);
+                txtSpeed.setText(String.format(Locale.getDefault(), "%d", speed) + " MPH");
             }
         });
     }

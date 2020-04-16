@@ -5,5 +5,11 @@ public interface Display
 {
     void showToast(String message, int length);
     void updateDeviceCount(int noDevices);
+
     void vehicleStarted();
+
+    void chargeMode(boolean isCharging);
+    void updateChargeLevel(int charge);
+    void updateRange(int milesLeft);
+    void updateSpeed(int speed);
 }
