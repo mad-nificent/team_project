@@ -29,6 +29,8 @@ public class Home extends AppCompatActivity
     // manages interface between user and the service, such as managing speed, battery etc.
     VehicleManager vehicle;
 
+    Button btnCharge, btnAccelerate, btnBrake, btnIncreaseTemp, btnDecreaseTemp;
+
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
@@ -112,7 +114,7 @@ public class Home extends AppCompatActivity
     @Override
     public void setupComplete()
     {
-        vehicle.start();
+        vehicle.initialise();
     }
 
     @Override
@@ -132,6 +134,7 @@ public class Home extends AppCompatActivity
     public void vehicleStarted()
     {
         loadVehicleInterface();
+        vehicle.start();
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -139,7 +142,20 @@ public class Home extends AppCompatActivity
     {
         setContentView(R.layout.prototype_interface);
 
-        Button btnAccelerate = findViewById(R.id.btnIncreaseSpeed);
+        btnCharge = findViewById(R.id.btnCharge);
+        btnCharge.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleCharging();
+
+                return true;
+            }
+        });
+
+        btnAccelerate = findViewById(R.id.btnIncreaseSpeed);
         btnAccelerate.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -149,13 +165,13 @@ public class Home extends AppCompatActivity
                     vehicle.accelerate();
 
                 else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_POINTER_UP)
-                    vehicle.idle();
+                    vehicle.decelerate();
 
                 return true;
             }
         });
 
-        Button btnBrake = findViewById(R.id.btnDecreaseSpeed);
+        btnBrake = findViewById(R.id.btnDecreaseSpeed);
         btnBrake.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -165,21 +181,62 @@ public class Home extends AppCompatActivity
                     vehicle.brake();
 
                 else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_POINTER_UP)
-                    vehicle.idle();
+                    vehicle.decelerate();
+
+                return true;
+            }
+        });
+
+        btnIncreaseTemp = findViewById(R.id.btnIncreaseTemp);
+        btnIncreaseTemp.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.increaseTemperature();
+
+                return true;
+            }
+        });
+
+        btnDecreaseTemp = findViewById(R.id.btnDecreaseTemp);
+        btnDecreaseTemp.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.decreaseTemperature();
 
                 return true;
             }
         });
     }
 
-    @Override
-    public void chargeMode(boolean isCharging)
+    void enableControls(boolean enabled)
     {
-        // switch off controls
+        btnAccelerate.setEnabled(enabled);
+        btnBrake.setEnabled(enabled);
+        btnIncreaseTemp.setEnabled(enabled);
+        btnDecreaseTemp.setEnabled(enabled);
     }
 
     @Override
-    public void updateChargeLevel(final int charge)
+    public void updateChargeMode(final boolean isCharging)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                enableControls(!isCharging);
+            }
+        });
+    }
+
+    @Override
+    public void updateBatteryLevel(final int charge)
     {
         runOnUiThread(new Runnable()
         {
@@ -188,6 +245,20 @@ public class Home extends AppCompatActivity
             {
                 EditText txtBattery = findViewById(R.id.txtBattery);
                 txtBattery.setText(String.format(Locale.getDefault(), "%d", charge) + "%");
+            }
+        });
+    }
+
+    @Override
+    public void updateBatteryTemperature(final int temperature)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                EditText txtTemperature = findViewById(R.id.txtTemp);
+                txtTemperature.setText(String.format(Locale.getDefault(), "%d", temperature) + "°C");
             }
         });
     }
@@ -216,6 +287,9 @@ public class Home extends AppCompatActivity
             {
                 EditText txtSpeed = findViewById(R.id.txtSpeed);
                 txtSpeed.setText(String.format(Locale.getDefault(), "%d", speed) + " MPH");
+
+                if (speed > 0) btnCharge.setEnabled(false);
+                else           btnCharge.setEnabled(true);
             }
         });
     }

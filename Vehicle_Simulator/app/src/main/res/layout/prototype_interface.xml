@@ -10,42 +10,33 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <TableLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TableRow
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/btnCharge"
+                    android:text="Charge"/>
+            </TableRow>
+
+        </TableLayout>
+
         <TableRow
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <Button
-                android:id="@+id/btnDecreaseBattery"
-
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_span="1"
-                android:layout_weight="1"
-
-                android:text="-"
-                android:onClick="onMinusClick"/>
-
             <EditText
                 android:id="@+id/txtBattery"
-
-                android:layout_width="0dp"
-                android:layout_span="2"
-                android:layout_weight="2"
-
+                android:layout_width="wrap_content"
+                android:layout_weight="1"
                 android:hint="Battery Level (%)"
                 android:textAlignment="center"
                 android:inputType="number"/>
-
-            <Button
-                android:id="@+id/btnIncreaseBattery"
-
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_span="1"
-                android:layout_weight="1"
-
-                android:text="+"
-                android:onClick="onPlusClick"/>
 
         </TableRow>
 
@@ -53,38 +44,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <Button
-                android:id="@+id/btnDecreaseRange"
-
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_span="1"
-                android:layout_weight="1"
-
-                android:text="-"
-                android:onClick="onMinusClick"/>
-
             <EditText
                 android:id="@+id/txtRange"
-
-                android:layout_width="0dp"
-                android:layout_span="2"
-                android:layout_weight="2"
-
+                android:layout_width="wrap_content"
+                android:layout_weight="1"
                 android:hint="Range (miles)"
                 android:textAlignment="center"
                 android:inputType="number"/>
-
-            <Button
-                android:id="@+id/btnIncreaseRange"
-
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_span="1"
-                android:layout_weight="1"
-
-                android:text="+"
-                android:onClick="onPlusClick"/>
 
         </TableRow>
 
@@ -190,41 +156,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <Button
-                android:id="@+id/btnDecreaseDistance"
-
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_span="1"
-                android:layout_weight="1"
-
-                android:text="-"
-                android:onClick="onMinusClick"/>
-
             <EditText
                 android:id="@+id/txtDistance"
-
-                android:layout_width="0dp"
-                android:layout_span="2"
-                android:layout_weight="2"
-
+                android:layout_width="wrap_content"
+                android:layout_weight="1"
                 android:hint="Distance (miles)"
                 android:textAlignment="center"
                 android:inputType="number"/>
 
-            <Button
-                android:id="@+id/btnIncreaseDistance"
-
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_span="1"
-                android:layout_weight="1"
-
-                android:text="+"
-                android:onClick="onPlusClick"/>
-
         </TableRow>
-
 
         <TableLayout
             android:layout_width="match_parent"

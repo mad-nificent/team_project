@@ -6,7 +6,7 @@ class SpeedManager
     enum State { IDLE, ACCELERATING, BRAKING };
 
     // speed limitations
-    private final int MIN_SPEED = 0, MAX_SPEED = 120;
+    final int MIN_SPEED = 0, MAX_SPEED = 120;
 
     // time to sleep before increasing/decreasing speed
     private final double ACCELERATION_MULTIPLIER = 1.0075;
@@ -14,115 +14,78 @@ class SpeedManager
     private final int    BASE_DECELERATION_RATE  = 500;
     private final int    BASE_BRAKING_RATE       = 10;
 
-    private State state = State.IDLE;
-    private int speed   = MIN_SPEED;
+    private boolean started = false;
+    private State   state   = State.IDLE;
+    private int     speed   = MIN_SPEED;
 
     private VehicleStatus updateStatus;
 
     SpeedManager(VehicleStatus vehicleStatus) { updateStatus = vehicleStatus; }
 
-    void accelerate()
+    void start()
     {
-        if (state == State.IDLE)
+        if (!started)
         {
-            // start
-            state = State.ACCELERATING;
-
-            // run in the background to not block UI
-            new Thread(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    // state can be affected by other threads, check still throttling
-                    while (state == State.ACCELERATING)
-                    {
-                        if (speed < MAX_SPEED)
-                        {
-                            speed += 1;
-                            updateStatus.reportSpeed(speed);
-                        }
-
-                        try
-                        {
-                            // calculate time to sleep based on current speed and rate of acceleration
-                            // higher speeds will sleep longer to simulate slowing climb
-                            double sleepTime = BASE_ACCELERATION_RATE * Math.pow(ACCELERATION_MULTIPLIER, speed);
-                            Thread.sleep((int)Math.ceil(sleepTime));
-                        }
-
-                        catch (InterruptedException e) { e.printStackTrace(); }
-                    }
-                }
-
-            }).start();
-        }
-    }
-
-    void decelerate()
-    {
-        if (state != State.IDLE)
-        {
-            // start
+            started = true;
             state = State.IDLE;
-
-            // run in the background to not block UI
-            new Thread(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    // state can be affected by other threads, check still idling
-                    while (state == State.IDLE)
-                    {
-                        if (speed > MIN_SPEED)
-                        {
-                            speed -= 1;
-                            updateStatus.reportSpeed(speed);
-                        }
-
-                        // slowly decelerate
-                        try { Thread.sleep(BASE_DECELERATION_RATE); }
-                        catch (InterruptedException e) { e.printStackTrace(); }
-                    }
-                }
-
-            }).start();
+            new Thread(new Runnable() { @Override public void run() { loop(); } }).start();
         }
     }
 
-    void brake()
+    void accelerate() { state = State.ACCELERATING; }
+    void decelerate() { state = State.IDLE; }
+    void brake()      { state = State.BRAKING; }
+    void stop()       { started = false; }
+
+    int   speed() { return speed; }
+    State state() { return state; }
+
+    private void loop()
     {
-        if (state != State.BRAKING)
+        // state can be affected by other threads, check still throttling
+        while (started)
         {
-            // start
-            state = State.BRAKING;
-
-            // run in the background to not block UI
-            new Thread(new Runnable()
+            switch (state)
             {
-                @Override
-                public void run()
-                {
-                    // state can be affected by other threads, check still braking
-                    while (state == State.BRAKING)
-                    {
-                        if (speed > MIN_SPEED)
-                        {
-                            speed -= 1;
-                            updateStatus.reportSpeed(speed);
-                        }
+                case IDLE:
+                    reduceSpeed(BASE_DECELERATION_RATE);
+                    break;
 
-                        // quickly decelerate
-                        try { Thread.sleep(BASE_BRAKING_RATE); }
-                        catch (InterruptedException e) { e.printStackTrace(); }
-                    }
-                }
+                case ACCELERATING:
+                    // calculate time to sleep based on current speed and rate of acceleration
+                    // higher speeds will sleep longer to simulate slowing climb
+                    double sleepTime = BASE_ACCELERATION_RATE * Math.pow(ACCELERATION_MULTIPLIER, speed);
+                    increaseSpeed((int) Math.ceil(sleepTime));
+                    break;
 
-            }).start();
+                case BRAKING:
+                    reduceSpeed(BASE_BRAKING_RATE);
+                    break;
+            }
         }
     }
 
-    int   getSpeed() { return speed; }
-    State getState() { return state; }
+    private void increaseSpeed(int sleepTime)
+    {
+        if (speed < MAX_SPEED)
+        {
+            speed += 1;
+            updateStatus.notifySpeedChanged(speed);
+        }
+
+        try { Thread.sleep(sleepTime); }
+        catch (InterruptedException e) { e.printStackTrace(); }
+    }
+
+    private void reduceSpeed(int sleepTime)
+    {
+        if (speed > MIN_SPEED)
+        {
+            speed -= 1;
+            updateStatus.notifySpeedChanged(speed);
+        }
+
+        try { Thread.sleep(sleepTime); }
+        catch (InterruptedException e) { e.printStackTrace(); }
+    }
 }

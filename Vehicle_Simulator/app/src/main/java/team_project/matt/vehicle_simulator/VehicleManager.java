@@ -1,24 +1,21 @@
 package team_project.matt.vehicle_simulator;
 
-import android.util.Log;
-
 class VehicleManager implements VehicleStatus
 {
-    private Display display;
-
+    private Display        display;
     private VehicleService vehicleService;
 
-    // battery data
-    private BatteryManager batteryManager;
-    private int            range;
-    private double         batteryTemp;
+    private BatteryManager battery;
 
     // controls & stats
-    private SpeedManager   speedManager;
+    // -----------------------------------
+    private SpeedManager motor;
+
     private int            turnSignal;
     private int            lights;
     private int            parkingBrake;
     private int            mileage;
+    // -----------------------------------
 
     // warnings
     private int seatbelt;
@@ -33,123 +30,135 @@ class VehicleManager implements VehicleStatus
     {
         this.vehicleService = vehicleService;
         this.display = display;
+    }
 
-        speedManager   = new SpeedManager(this);
-        batteryManager = new BatteryManager(this);
+    void initialise()
+    {
+        vehicleService.start();
 
-        // load variables from shared prefs and apply to battery, mileage etc.
+        battery = new BatteryManager(this);
+        motor   = new SpeedManager(this);
     }
 
     void start()
     {
-        vehicleService.start();
+        battery.turnOn();
+        motor.start();
+
+
+        updateMilesRemaining(motor.speed());
+        // load variables from shared prefs and apply to battery, mileage etc.
     }
 
     void stop()
     {
-        vehicleService.stop();
+        if (parkingBrake == vehicleService.STATE_ON)
+        {
+            battery.turnOff();
+            motor.stop();
 
-        // idle any properties
+            vehicleService.stop();
+        }
     }
 
-    void charge()
-    {
-        if (speedManager.getSpeed() == 0)
-        {
+    void toggleCharging() { battery.toggleCharging(); }
 
-        }
+    void increaseTemperature() { battery.setTemperature(battery.temperature() + 1); }
+    void decreaseTemperature() { battery.setTemperature(battery.temperature() - 1); }
+
+    void toggleParkingBrake(boolean engaged)
+    {
+        if (engaged) parkingBrake = vehicleService.STATE_ON;
+        else         parkingBrake = vehicleService.STATE_OFF;
     }
 
     void accelerate()
     {
-        if (batteryManager.getCharge() > 0)
+        // need power and brake disengaged
+        if (battery.isOn() && battery.chargeLeft() > 0 && parkingBrake == vehicleService.STATE_OFF)
         {
-            // set appropriate power consumption at speed to accelerate from
-            batteryManager.setPowerLevel(speedManager.getSpeed() * batteryManager.MAX_POWER);
+            // not cold start, adjust battery consumption to match current speed
+            if (motor.speed() > 1) battery.increasePowerLevel(battery.minPowerConsumption() * motor.speed());
 
-            // start accelerating and using power
-            batteryManager.consumePower();
-            speedManager.accelerate();
+            motor.accelerate();
         }
     }
 
-    void idle()
+    void decelerate()
     {
-        batteryManager.idle();
-        speedManager.decelerate();
+        if (!consumingPower()) battery.idle();
+        else battery.decreasePowerLevel(battery.minPowerConsumption() * motor.speed());
+
+        motor.decelerate();
     }
 
     void brake()
     {
-        batteryManager.idle();
-        speedManager.brake();
+        if (!consumingPower()) battery.idle();
+        else battery.decreasePowerLevel(battery.minPowerConsumption() * motor.speed());
+
+        motor.brake();
+    }
+
+    private boolean consumingPower()
+    {
+        return false;
     }
 
     @Override
-    public void reportChargingState(boolean isCharging)
+    public void notifyChargingStateChanged(boolean isCharging)
     {
-        display.chargeMode(isCharging);
-
-        if (isCharging)
-        {
-            // block controls
-        }
+        display.updateChargeMode(isCharging);
     }
 
     @Override
-    public void reportBatteryLevel(int level)
+    public void notifyBatteryLevelChanged(double batteryLevel)
     {
-        // kill power to vehicle
-        if (level == 0)
-        {
-            idle();
-        }
+        display.updateBatteryLevel((int)batteryLevel);
+        vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL).setData((int)batteryLevel);
 
-        // report to UI
-        vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(level);
-        display.updateChargeLevel(level);
+        updateMilesRemaining(motor.speed());
+        if (batteryLevel == 0) decelerate();    // kill power to vehicle
     }
 
     @Override
-    public void reportSpeed(int speed)
+    public void notifyBatteryTemperatureChanged(double temperature)
     {
-        vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(speed);
+        display.updateBatteryTemperature((int)temperature);
+        vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData((int)temperature);
+    }
+
+    @Override
+    public void notifySpeedChanged(int speed)
+    {
         display.updateSpeed(speed);
-        updateBatteryStats(speed);
-    }
+        vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(speed);
 
-    private void updateBatteryStats(int speed)
-    {
         updatePowerConsumption(speed);
-        updateMilesRemaining(speed);
     }
 
     private void updatePowerConsumption(int speed)
     {
-        // moving, calculate power usage -> speed goes up, power goes up and vice versa
-        if (speedManager.getState() == SpeedManager.State.ACCELERATING)
-            if (speed > 0) batteryManager.setPowerLevel(batteryManager.MIN_POWER / speed);
-
-        else batteryManager.idle();
+        // accelerating
+        if (motor.state() == SpeedManager.State.ACCELERATING && speed > 1)
+            battery.increasePowerLevel(battery.minPowerConsumption());
     }
 
     private void updateMilesRemaining(int speed)
     {
-        int powerConsumption = batteryManager.getState();
-        if (powerConsumption != batteryManager.IDLE)
-        {
-            // calculate mileage
-            int charge         = batteryManager.getCharge();
-            int timeToEmpty    = (powerConsumption * charge) / 1000;       // time in secs till 0% battery based on current power drain
-            double milesPerSec = (double) speed / 3600;
-            int milesRemaining = (int) Math.round(milesPerSec * timeToEmpty);
+        if (speed == 0) speed = 1;
 
-            Log.d(this.getClass().getName(), "updateMilesRemaining() -> Charge: " + charge);
-            Log.d(this.getClass().getName(), "updateMilesRemaining() -> Power Consumption: " + powerConsumption);
-            Log.d(this.getClass().getName(), "updateMilesRemaining() -> MPS: " + milesPerSec);
+        // time in secs till 0% battery
+        double timeToEmpty = battery.timeRemaining() / 1000;
 
-            vehicleService.getCharacteristic(VehicleService.Property.RANGE).setData(milesRemaining);
-            display.updateRange(milesRemaining);
-        }
+        // calculate mileage
+        double milesPerSec = (double) speed / 3600;
+        int milesRemaining = (int) Math.round(milesPerSec * timeToEmpty);
+
+        //Log.d(this.getClass().getName(), "updateMilesRemaining() -> TTE: " + timeToEmpty + " @ " + speed + " MPH");
+        //Log.d(this.getClass().getName(), "updateMilesRemaining() -> MPS: " + milesPerSec);
+
+        vehicleService.getCharacteristic(VehicleService.Property.RANGE).setData(milesRemaining);
+        display.updateRange(milesRemaining);
     }
 }

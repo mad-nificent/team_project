@@ -4,113 +4,179 @@ import android.util.Log;
 
 class BatteryManager
 {
-    // represents state of the battery and sleep time to simulate drain/charge over time
-    final int   IDLE = 1,               // time not used, simply represents idle state
-                CHARGING = 600,         // 1 min full charge from 0%
-                MAX_POWER = 3000,       // 5 mins full drain at 100%
-                MIN_POWER = 360000;     // 1 hr full drain at 100%
+    enum State { IDLE, CHARGING, RUNNING };
 
-    private int state;
-    private int charge;
+    private final int CONVERT_TO_MS = 60000;
+
+    // globals, not to be changed once set
+    private int    SLEEP_TIME;
+    private double CHARGING_POWER, MAX_POWER_PER_CYCLE, MIN_POWER_PER_CYCLE;
+    private int    MAX_POWER_DRAIN_SPEED_MS, MIN_POWER_DRAIN_SPEED_MS;
+
+    private boolean isOn;
+    private State   state;
+    private double  powerLevel;
+
+    private double charge;
+    private double temperature;
 
     private VehicleStatus updateStatus;
 
     BatteryManager(VehicleStatus vehicleStatus)
     {
+        SLEEP_TIME = 1000;
+
+        // how fast should max power drain? - 5 mins
+        MAX_POWER_DRAIN_SPEED_MS        = 5 * CONVERT_TO_MS;                        // 300000
+        double msToDrainOnePercentAtMax = (double) MAX_POWER_DRAIN_SPEED_MS / 100;  // 3000
+        MAX_POWER_PER_CYCLE             = SLEEP_TIME / msToDrainOnePercentAtMax;    // 0.333...
+
+        // how fast should min power drain? - 10 hours (600 mins)
+        MIN_POWER_DRAIN_SPEED_MS        = 600 * CONVERT_TO_MS;                      // 36000000
+        double msToDrainOnePercentAtMin = (double) MIN_POWER_DRAIN_SPEED_MS / 100;  // 360000
+        MIN_POWER_PER_CYCLE             = SLEEP_TIME / msToDrainOnePercentAtMin;    // 0.002777...
+
+        // how fast should charge? - 3 mins
+        int chargeTime    = 3 * CONVERT_TO_MS;          // 180000
+        double chargeGain = (double) chargeTime / 100;  // 1800
+        CHARGING_POWER    = SLEEP_TIME / chargeGain;    // 0.555...
+
+        isOn       = false;                 // waits for user to run battery cycles
+        state      = State.IDLE;            // battery does not consume power initially
+        powerLevel = MIN_POWER_PER_CYCLE;   // when it does start, consume min power until increased
+
+        charge      = 100; // TODO: read charge from shared prefs, ALSO check if charging, if so toggle that on and update charge state on turn on
+        temperature = 20;
+
         updateStatus = vehicleStatus;
-
-        // read saved drain settings and current charge from shared prefs
-
-        // for now use
-        state = IDLE;
-        charge = 100;
     }
 
-    void consumePower()
+    void turnOn()
     {
-        if (state != CHARGING)
+        if (!isOn)
         {
-            new Thread(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    // deplete until drained or car idles/charges
-                    while (charge > 0 && state >= MAX_POWER && state <= MIN_POWER)
-                    {
-                        charge -= 1;
+            isOn = true;
 
-                        updateStatus.reportBatteryLevel(charge);
+            // send out initial charge state
+            updateStatus.notifyBatteryLevelChanged(charge);
+            updateStatus.notifyBatteryTemperatureChanged(temperature);
 
-                        try { Thread.sleep(state); }
-                        catch (InterruptedException e) { e.printStackTrace(); }
-                    }
-                }
-
-            }).start();
+            new Thread(new Runnable() { @Override public void run() { startPowerCycle(); } }).start();
         }
     }
 
-    boolean setPowerLevel(int power)
+    private void startPowerCycle()
     {
-        boolean didUpdate = false;
-
-        if (state != CHARGING)
+        while (isOn)
         {
-            if (power <= MIN_POWER && power >= MAX_POWER)
+            // idle will just loop with no changes
+            if (state != State.IDLE)
             {
-                state = power;
-                didUpdate = true;
+                switch (state)
+                {
+                    case CHARGING:
+                        if (charge < 100) charge += CHARGING_POWER;
+                        break;
+
+                    case RUNNING:
+                        if (charge > 0) charge -= powerLevel;
+                        break;
+                }
+
+                updateStatus.notifyBatteryLevelChanged((int) charge);
+
+                try { Thread.sleep(SLEEP_TIME); }
+                catch (InterruptedException e) { e.printStackTrace(); }
             }
-
-            else Log.e(this.getClass().getName(), "updateDrainSpeed() -> Failed to update. Value not within limits.");
         }
-
-        else Log.e(this.getClass().getName(), "updateDrainSpeed() -> Failed to update. Battery is charging.");
-
-        return didUpdate;
     }
 
-    void idle() { if (state != CHARGING) state = IDLE; }
-
-    void charge()
+    void idle()
     {
-        if (state == IDLE)
+        // moves to idle state, will no longer consume power
+        if (state != State.IDLE)
         {
-            state = CHARGING;
-
-            new Thread(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    updateStatus.reportChargingState(true);
-
-                    while (charge < 100 && state == CHARGING)
-                    {
-                        charge += 1;
-
-                        updateStatus.reportBatteryLevel(charge);
-
-                        try { Thread.sleep(state); }
-                        catch (InterruptedException e) { e.printStackTrace(); }
-                    }
-
-                    updateStatus.reportChargingState(false);
-                }
-
-            }).start();
+            state = State.IDLE;
+            powerLevel = MIN_POWER_PER_CYCLE;
         }
     }
 
-    void stopCharging() { state = IDLE; }
-
-    void setCharge(int charge)
+    void toggleCharging()
     {
-        if (state == IDLE && charge > 0 && charge < 100)
-            this.charge = charge;
+        boolean isCharging = false;
+
+        if (state == State.CHARGING) idle();      // toggle off
+        else
+        {
+            // toggle on
+            state = State.CHARGING;
+            isCharging = true;
+        }
+
+        updateStatus.notifyChargingStateChanged(isCharging);
     }
 
-    int getCharge() { return charge; }
-    int getState()  { return state; }
+    void turnOff()
+    {
+        isOn = false;
+        idle();
+    }
+
+    void increasePowerLevel(double additionalPower)
+    {
+        if (additionalPower > 0 && charge >  0 && state != State.CHARGING)
+        {
+            // now consuming power
+            if (state == State.IDLE) state = State.RUNNING;
+
+            // must be in range
+            if ((powerLevel + additionalPower) <= MAX_POWER_PER_CYCLE)
+            {
+                powerLevel += additionalPower;
+                //Log.d(this.getClass().getName(), "increasePowerLevel() -> Adding: " + additionalPower + ", New Total: " + powerLevel);
+            }
+        }
+    }
+
+    void decreasePowerLevel(double reducedPower)
+    {
+        if (reducedPower > 0 && charge >  0 && state != State.CHARGING)
+        {
+            // must be in range
+            if ((powerLevel - reducedPower) >= MIN_POWER_PER_CYCLE)
+            {
+                powerLevel -= reducedPower;
+                Log.d(this.getClass().getName(), "decreasePowerLevel() -> Reducing: " + reducedPower + ", New Total: " + powerLevel);
+            }
+        }
+    }
+
+    void setTemperature(double newTemperature)
+    {
+        temperature = newTemperature;
+        updateStatus.notifyBatteryTemperatureChanged(temperature);
+    }
+
+    boolean isOn()                    { return isOn; }
+    double  currentPowerConsumption() { return powerLevel; }
+    double  minPowerConsumption()     { return MIN_POWER_PER_CYCLE; }
+    double  maxPowerConsumption()     { return MAX_POWER_PER_CYCLE; }
+    double  chargeLeft()              { return charge; }
+    double  temperature()             { return temperature; }
+
+    double timeRemaining()
+    {
+        double drainOnePercentMs = SLEEP_TIME / powerLevel;
+        double timeRemaining     = drainOnePercentMs * charge;
+
+        // value cannot exceed slowest drain time
+        if (timeRemaining > MIN_POWER_DRAIN_SPEED_MS)
+            timeRemaining = MIN_POWER_DRAIN_SPEED_MS;
+
+        // precision can be lost when converting back
+        else if (powerLevel == MAX_POWER_PER_CYCLE && timeRemaining > MAX_POWER_DRAIN_SPEED_MS)
+            timeRemaining = MAX_POWER_DRAIN_SPEED_MS;
+
+        return timeRemaining;
+    }
 }

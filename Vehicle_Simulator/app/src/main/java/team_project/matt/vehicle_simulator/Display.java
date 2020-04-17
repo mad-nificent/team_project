@@ -8,8 +8,9 @@ public interface Display
 
     void vehicleStarted();
 
-    void chargeMode(boolean isCharging);
-    void updateChargeLevel(int charge);
+    void updateChargeMode(boolean isCharging);
+    void updateBatteryLevel(int charge);
+    void updateBatteryTemperature(int temperature);
     void updateRange(int milesLeft);
     void updateSpeed(int speed);
 }
