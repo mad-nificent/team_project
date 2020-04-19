@@ -13,4 +13,5 @@ public interface Display
     void updateBatteryTemperature(int temperature);
     void updateRange(int milesLeft);
     void updateSpeed(int speed);
+    void updateDistance(int distance);
 }

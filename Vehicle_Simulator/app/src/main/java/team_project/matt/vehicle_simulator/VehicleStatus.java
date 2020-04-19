@@ -6,4 +6,5 @@ public interface VehicleStatus
     void notifyBatteryLevelChanged(double batteryLevel);
     void notifyBatteryTemperatureChanged(double temperature);
     void notifySpeedChanged(int speed);
+    void notifyDistanceChanged(int distance);
 }

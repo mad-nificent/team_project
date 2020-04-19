@@ -45,7 +45,7 @@ class BatteryManager
         state      = State.IDLE;            // battery does not consume power initially
         powerLevel = MIN_POWER_PER_CYCLE;   // when it does start, consume min power until increased
 
-        charge      = 100; // TODO: read charge from shared prefs, ALSO check if charging, if so toggle that on and update charge state on turn on
+        charge      = 10; // TODO: read charge from shared prefs, ALSO check if charging, if so toggle that on and update charge state on turn on
         temperature = 20;
 
         updateStatus = vehicleStatus;
@@ -83,7 +83,7 @@ class BatteryManager
                         break;
                 }
 
-                updateStatus.notifyBatteryLevelChanged((int) charge);
+                updateStatus.notifyBatteryLevelChanged(charge);
 
                 try { Thread.sleep(SLEEP_TIME); }
                 catch (InterruptedException e) { e.printStackTrace(); }

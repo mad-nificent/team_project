@@ -3,6 +3,7 @@ package team_project.matt.vehicle_simulator;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -13,6 +14,9 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.Locale;
@@ -29,7 +33,8 @@ public class Home extends AppCompatActivity
     // manages interface between user and the service, such as managing speed, battery etc.
     VehicleManager vehicle;
 
-    Button btnCharge, btnAccelerate, btnBrake, btnIncreaseTemp, btnDecreaseTemp;
+    ImageButton btnCharge, btnAccelerate, btnBrake;
+    SeekBar temperature;
 
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -140,9 +145,9 @@ public class Home extends AppCompatActivity
     @SuppressLint("ClickableViewAccessibility")
     private void loadVehicleInterface()
     {
-        setContentView(R.layout.prototype_interface);
+        setContentView(R.layout.activity_home_vehicle_interface);
 
-        btnCharge = findViewById(R.id.btnCharge);
+        btnCharge = findViewById(R.id.charge);
         btnCharge.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -155,7 +160,7 @@ public class Home extends AppCompatActivity
             }
         });
 
-        btnAccelerate = findViewById(R.id.btnIncreaseSpeed);
+        btnAccelerate = findViewById(R.id.btnThrottle);
         btnAccelerate.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -171,7 +176,7 @@ public class Home extends AppCompatActivity
             }
         });
 
-        btnBrake = findViewById(R.id.btnDecreaseSpeed);
+        btnBrake = findViewById(R.id.btnBrake);
         btnBrake.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -187,30 +192,20 @@ public class Home extends AppCompatActivity
             }
         });
 
-        btnIncreaseTemp = findViewById(R.id.btnIncreaseTemp);
-        btnIncreaseTemp.setOnTouchListener(new View.OnTouchListener()
+        temperature = findViewById(R.id.temperatureBar);
+        temperature.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
         {
             @Override
-            public boolean onTouch(View v, MotionEvent event)
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser)
             {
-                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
-                    vehicle.increaseTemperature();
-
-                return true;
+                vehicle.setTemperature(progress);
             }
-        });
 
-        btnDecreaseTemp = findViewById(R.id.btnDecreaseTemp);
-        btnDecreaseTemp.setOnTouchListener(new View.OnTouchListener()
-        {
             @Override
-            public boolean onTouch(View v, MotionEvent event)
-            {
-                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
-                    vehicle.decreaseTemperature();
+            public void onStartTrackingTouch(SeekBar seekBar) {}
 
-                return true;
-            }
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
         });
     }
 
@@ -218,8 +213,7 @@ public class Home extends AppCompatActivity
     {
         btnAccelerate.setEnabled(enabled);
         btnBrake.setEnabled(enabled);
-        btnIncreaseTemp.setEnabled(enabled);
-        btnDecreaseTemp.setEnabled(enabled);
+        temperature.setEnabled(enabled);
     }
 
     @Override
@@ -231,6 +225,9 @@ public class Home extends AppCompatActivity
             public void run()
             {
                 enableControls(!isCharging);
+
+                if (isCharging) btnCharge.setBackground(getDrawable(R.drawable.charging_icon_green));
+                else            btnCharge.setBackground(getDrawable(R.drawable.charging_icon_grey));
             }
         });
     }
@@ -243,7 +240,7 @@ public class Home extends AppCompatActivity
             @Override
             public void run()
             {
-                EditText txtBattery = findViewById(R.id.txtBattery);
+                TextView txtBattery = findViewById(R.id.battery);
                 txtBattery.setText(String.format(Locale.getDefault(), "%d", charge) + "%");
             }
         });
@@ -257,7 +254,7 @@ public class Home extends AppCompatActivity
             @Override
             public void run()
             {
-                EditText txtTemperature = findViewById(R.id.txtTemp);
+                TextView txtTemperature = findViewById(R.id.temperature);
                 txtTemperature.setText(String.format(Locale.getDefault(), "%d", temperature) + "°C");
             }
         });
@@ -271,7 +268,7 @@ public class Home extends AppCompatActivity
             @Override
             public void run()
             {
-                EditText txtRange = findViewById(R.id.txtRange);
+                TextView txtRange = findViewById(R.id.range);
                 txtRange.setText(String.format(Locale.getDefault(), "%d", milesLeft) + " miles left");
             }
         });
@@ -285,11 +282,25 @@ public class Home extends AppCompatActivity
             @Override
             public void run()
             {
-                EditText txtSpeed = findViewById(R.id.txtSpeed);
+                TextView txtSpeed = findViewById(R.id.speed);
                 txtSpeed.setText(String.format(Locale.getDefault(), "%d", speed) + " MPH");
 
                 if (speed > 0) btnCharge.setEnabled(false);
                 else           btnCharge.setEnabled(true);
+            }
+        });
+    }
+
+    @Override
+    public void updateDistance(final int distance)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                TextView txtDistance = findViewById(R.id.distance);
+                txtDistance.setText(String.format(Locale.getDefault(), "%d", distance) + " miles travelled");
             }
         });
     }

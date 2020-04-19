@@ -134,7 +134,7 @@
                 android:layout_span="2"
                 android:layout_weight="2"
 
-                android:hint="Speed (%)"
+                android:hint="Speed"
                 android:textAlignment="center"
                 android:inputType="number"/>
 

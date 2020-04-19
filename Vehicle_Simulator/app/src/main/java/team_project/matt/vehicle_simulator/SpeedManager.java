@@ -5,6 +5,8 @@ class SpeedManager
     // states of throttle
     enum State { IDLE, ACCELERATING, BRAKING };
 
+    private final int CONVERT_TO_MPS = 3600000;
+
     // speed limitations
     final int MIN_SPEED = 0, MAX_SPEED = 120;
 
@@ -14,28 +16,36 @@ class SpeedManager
     private final int    BASE_DECELERATION_RATE  = 500;
     private final int    BASE_BRAKING_RATE       = 10;
 
-    private boolean started = false;
-    private State   state   = State.IDLE;
-    private int     speed   = MIN_SPEED;
+    private boolean started;
+    private State   state;
+    private int     speed;
+    private double  distance;
 
     private VehicleStatus updateStatus;
 
-    SpeedManager(VehicleStatus vehicleStatus) { updateStatus = vehicleStatus; }
+    SpeedManager(VehicleStatus vehicleStatus)
+    {
+        updateStatus = vehicleStatus;
+
+        distance = 0; // TODO: read from shared prefs
+    }
 
     void start()
     {
         if (!started)
         {
             started = true;
-            state = State.IDLE;
+            state   = State.IDLE;
+            speed   = MIN_SPEED;
+
             new Thread(new Runnable() { @Override public void run() { loop(); } }).start();
         }
     }
 
-    void accelerate() { state = State.ACCELERATING; }
-    void decelerate() { state = State.IDLE; }
-    void brake()      { state = State.BRAKING; }
-    void stop()       { started = false; }
+    void accelerate() { if (started) state = State.ACCELERATING; }
+    void decelerate() { if (started) state = State.IDLE; }
+    void brake()      { if (started) state = State.BRAKING; }
+    void stop()       { if (started && speed == 0) started = false; }
 
     int   speed() { return speed; }
     State state() { return state; }
@@ -73,6 +83,11 @@ class SpeedManager
             updateStatus.notifySpeedChanged(speed);
         }
 
+        // convert mph to mpms, account for number of ms slept
+        double mps = (double)speed / CONVERT_TO_MPS;
+        distance += mps * sleepTime;
+        updateStatus.notifyDistanceChanged((int)distance);
+
         try { Thread.sleep(sleepTime); }
         catch (InterruptedException e) { e.printStackTrace(); }
     }
@@ -84,6 +99,11 @@ class SpeedManager
             speed -= 1;
             updateStatus.notifySpeedChanged(speed);
         }
+
+        // convert mph to mpms, account for number of ms slept
+        double mps = (double)speed / CONVERT_TO_MPS;
+        distance += mps * sleepTime;
+        updateStatus.notifyDistanceChanged((int)distance);
 
         try { Thread.sleep(sleepTime); }
         catch (InterruptedException e) { e.printStackTrace(); }

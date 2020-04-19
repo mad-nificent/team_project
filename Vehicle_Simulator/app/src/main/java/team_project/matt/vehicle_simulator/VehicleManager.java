@@ -63,8 +63,7 @@ class VehicleManager implements VehicleStatus
 
     void toggleCharging() { battery.toggleCharging(); }
 
-    void increaseTemperature() { battery.setTemperature(battery.temperature() + 1); }
-    void decreaseTemperature() { battery.setTemperature(battery.temperature() - 1); }
+    void setTemperature(int temperature) { battery.setTemperature(temperature); }
 
     void toggleParkingBrake(boolean engaged)
     {
@@ -118,7 +117,7 @@ class VehicleManager implements VehicleStatus
         vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL).setData((int)batteryLevel);
 
         updateMilesRemaining(motor.speed());
-        if (batteryLevel == 0) decelerate();    // kill power to vehicle
+        if (batteryLevel <= 0.0) decelerate();    // kill power to vehicle
     }
 
     @Override
@@ -135,6 +134,12 @@ class VehicleManager implements VehicleStatus
         vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(speed);
 
         updatePowerConsumption(speed);
+    }
+
+    @Override
+    public void notifyDistanceChanged(int distance)
+    {
+        display.updateDistance(distance);
     }
 
     private void updatePowerConsumption(int speed)
