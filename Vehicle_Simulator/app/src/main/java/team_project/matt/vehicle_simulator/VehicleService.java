@@ -1,39 +1,44 @@
 package team_project.matt.vehicle_simulator;
 
-import android.bluetooth.BluetoothGattCharacteristic;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
-public class VehicleService
+public class VehicleService implements BluetoothServerStatus
 {
-    BluetoothLE bluetoothLE;
-    
+    private VehicleDashboard vehicleDashboard;
+
+    private BluetoothLE bluetoothDevice;
+
     private final String       UUID = "dee0e505-9680-430e-a4c4-a225905ce33d";
     private final String descriptor = "00002902-0000-1000-8000-00805f9b34fb";
-    
+
+    private boolean serviceAdded = false;
+
     enum Property
     {
         // battery data
         BATTERY_LVL, RANGE, BATTERY_TEMP,
         
         // car data
-        SPEED, RPM, DISTANCE, TURN_SIGNAL, LIGHTS, HANDBRAKE,
+        SPEED, DISTANCE, TURN_SIGNAL, LIGHTS, PARKING_BRAKE,
         
         // warnings
-        SEATBELT, WIPER_LOW, TYRE_PRESSURE_LOW, AIRBAG_ERR, BRAKE_ERR, ABS_ERR, ENGIN_ERR
+        SEATBELT, WIPER_LOW, TYRE_PRESSURE_LOW, AIRBAG_ERR, BRAKE_ERR, ABS_ERR, EV_ERR
     }
     
     // property states
-    public final int         STATE_OFF = 0,           STATE_ON = 1;
-    public final int STATE_SIGNAL_LEFT = 1, STATE_SIGNAL_RIGHT = 2;
-    public final int  STATE_LIGHTS_LOW = 1,  STATE_LIGHTS_HIGH = 2, STATE_LIGHTS_ERR = 3;
-    public final int STATE_WARNING_LOW = 1, STATE_WARNING_HIGH = 2;
+    static final int         STATE_OFF = 0;
+    static final int          STATE_ON = 1;
+    static final int STATE_SIGNAL_LEFT = 1, STATE_SIGNAL_RIGHT = 2;
+    static final int  STATE_LIGHTS_LOW = 1,  STATE_LIGHTS_HIGH = 2, STATE_LIGHTS_ERR = 3;
+    static final int STATE_WARNING_LOW = 1, STATE_WARNING_HIGH = 2;
     
-    public class Characteristic
+    class Characteristic
     {
         // supported types
-        public static final int FORMAT_NUMBER = 0,  // regular numerical value
-                                 FORMAT_STATE = 1;  // finite number of states (on, off etc.)
+        static final int FORMAT_NUMBER = 0,  // regular numerical value
+                         FORMAT_STATE = 1;   // finite number of states (on, off etc.)
         
         private String             UUID;
         private Property           property;
@@ -51,53 +56,63 @@ public class VehicleService
             this.supportedValues = new ArrayList<>();
         }
         
-        public void addSupportedValue(int supportedValue)
+        void addSupportedValue(int supportedValue)
         {
             if (format == FORMAT_STATE) supportedValues.add(supportedValue);
         }
         
-        public void removeSupportedValue(int index)
+        void removeSupportedValue(int index)
         {
             if (index < supportedValues.size())
                 supportedValues.remove(index);
         }
         
-        public void setData(int data)
+        void setData(int data)
         {
             if (format == FORMAT_NUMBER) this.data = data;
-            
             else if (format == FORMAT_STATE)
             {
                 for (int value : supportedValues)
                     if (data == value)
+                    {
                         this.data = data;
+                        break;
+                    }
             }
             
-            if (bluetoothLE.service != null)
-            {
-                // update characteristic on service and notify change
-                BluetoothGattCharacteristic characteristic = bluetoothLE.service.getCharacteristic(java.util.UUID.fromString(this.UUID));
-    
-                characteristic.setValue(Integer.toString(this.data));
-    
-                for (int i = 0; i < bluetoothLE.devices.size(); ++i)
-                    bluetoothLE.GATTServer.notifyCharacteristicChanged(bluetoothLE.devices.get(i), characteristic, false);
-            }
+            if (serviceAdded) bluetoothDevice.updateCharacteristic(this.UUID, Integer.toString(this.data));
         }
         
-        public String                        getUUID() { return UUID; }
-        public Property                  getProperty() { return property; }
-        public int                         getFormat() { return format; }
-        public ArrayList<Integer> getSupportedValues() { return supportedValues; }
-        public int                           getData() { return data; }
+        String                        getUUID() { return UUID; }
+        Property                  getProperty() { return property; }
+        int                         getFormat() { return format; }
+        ArrayList<Integer> getSupportedValues() { return supportedValues; }
+        int                           getData() { return data; }
     }
     
     private ArrayList<Characteristic> characteristics = new ArrayList<>();
-    
-    VehicleService(BluetoothLE bluetoothLE)
+
+    void beginSetup(BluetoothLE bluetoothDevice, VehicleDashboard vehicleDashboard)
     {
-        this.bluetoothLE = bluetoothLE;
-        
+        this.bluetoothDevice  = bluetoothDevice;
+        this.vehicleDashboard = vehicleDashboard;
+
+        bluetoothDevice.beginSetup();
+    }
+
+    void start()
+    {
+        if (bluetoothDevice.isEnabled())
+        {
+            buildCharacteristics();
+            bluetoothDevice.startAdvertising(UUID);
+        }
+
+        else vehicleDashboard.showToast("Bluetooth device is not enabled.", Toast.LENGTH_LONG);
+    }
+
+    private void buildCharacteristics()
+    {
         // battery characteristics
         //------------------------------------------------------------
         Characteristic newCharacteristic = new Characteristic
@@ -127,13 +142,6 @@ public class VehicleService
         newCharacteristic = new Characteristic
                 ("7b9b53ff-5421-4bdf-beb0-ca8c949542c1",
                         Property.SPEED,
-                        Characteristic.FORMAT_NUMBER);
-        
-        characteristics.add(newCharacteristic);
-        
-        newCharacteristic = new Characteristic
-                ("0d6baf82-a79d-4660-a153-b72c6cbd63ee",
-                        Property.RPM,
                         Characteristic.FORMAT_NUMBER);
         
         characteristics.add(newCharacteristic);
@@ -170,7 +178,7 @@ public class VehicleService
     
         newCharacteristic = new Characteristic
                 ("f05976f6-aa9e-4d19-a255-aeda7dbb624f",
-                        Property.HANDBRAKE,
+                        Property.PARKING_BRAKE,
                         Characteristic.FORMAT_STATE);
         
         newCharacteristic.addSupportedValue(STATE_OFF);
@@ -245,7 +253,7 @@ public class VehicleService
     
         newCharacteristic = new Characteristic
                 ("d93f1c6c-6e14-44b3-95ce-d0a7f71efbb5",
-                        Property.ENGIN_ERR,
+                        Property.EV_ERR,
                         Characteristic.FORMAT_STATE);
     
         newCharacteristic.addSupportedValue(STATE_OFF);
@@ -255,12 +263,51 @@ public class VehicleService
         characteristics.add(newCharacteristic);
         //------------------------------------------------------------
     }
-    
-    public String getUUID() { return UUID; }
 
+    @Override
+    public void advertiseResult(boolean started)
+    {
+        if (started) startGATT();
+        else vehicleDashboard.showToast("Could not broadcast device.", Toast.LENGTH_LONG);
+    }
+
+    private void startGATT()
+    {
+        ArrayList<String> UUIDs = new ArrayList<>();
+        ArrayList<Integer> defaultValues = new ArrayList<>();
+
+        for (Characteristic characteristic : characteristics)
+        {
+            UUIDs.add(characteristic.UUID);
+            defaultValues.add(STATE_OFF);
+        }
+
+        bluetoothDevice.startGATT(UUID, UUIDs, descriptor, defaultValues);
+    }
+
+    @Override
+    public void serviceAddedResult(boolean added)
+    {
+        if (!added) vehicleDashboard.showToast("Could not start vehicle.", Toast.LENGTH_LONG);
+        else serviceAdded = true;
+    }
+
+    @Override
+    public void GATTResult(boolean started)
+    {
+        if (!started) vehicleDashboard.showToast("Could not start vehicle.", Toast.LENGTH_LONG);
+        else          vehicleDashboard.vehicleReady();
+    }
+
+    void stop()
+    {
+        bluetoothDevice.stop();
+    }
+    
+    public String getUUID()       { return UUID; }
     public String getDescriptor() { return descriptor; }
 
-    public Characteristic getCharacteristic(Property property)
+    Characteristic getCharacteristic(Property property)
     {
         for (Characteristic characteristic : characteristics)
             if (property == characteristic.getProperty())
@@ -269,43 +316,8 @@ public class VehicleService
         return null;
     }
     
-    public ArrayList<Characteristic> getCharacteristics()
+    ArrayList<Characteristic> getCharacteristics()
     {
         return characteristics;
-    }
-
-    public ArrayList<Characteristic> getWarnings()
-    {
-        ArrayList<Characteristic> warnings = new ArrayList<>();
-
-        warnings.add(getCharacteristic(Property.SEATBELT));
-        warnings.add(getCharacteristic(Property.WIPER_LOW));
-        warnings.add(getCharacteristic(Property.TYRE_PRESSURE_LOW));
-        warnings.add(getCharacteristic(Property.AIRBAG_ERR));
-        warnings.add(getCharacteristic(Property.BRAKE_ERR));
-        warnings.add(getCharacteristic(Property.ABS_ERR));
-        warnings.add(getCharacteristic(Property.ENGIN_ERR));
-
-        return warnings;
-    }
-    
-    public ArrayList<String> getCharacteristicUUIDs()
-    {
-        ArrayList<String> UUIDs =  new ArrayList<>();
-        
-        for (Characteristic characteristic : characteristics)
-            UUIDs.add(characteristic.getUUID());
-        
-        return UUIDs;
-    }
-    
-    public ArrayList<Integer> getCharacteristicFormats()
-    {
-        ArrayList<Integer> formats =  new ArrayList<>();
-        
-        for (Characteristic characteristic : characteristics)
-            formats.add(characteristic.getFormat());
-        
-        return formats;
     }
 }

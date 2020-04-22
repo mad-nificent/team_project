@@ -4,37 +4,32 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="team_project.matt.vehicle_simulator">
 
+    <!-- notify device must support BLE -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+
+    <!-- needed to request permissions -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
     <!-- device requires bluetooth le support as this simulator will send data via advertisements -->
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
-
-    <!-- required to access bluetooth features -->
-    <uses-permission android:name="android.permission.BLUETOOTH"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
     <application
-        tools:ignore="GoogleAppIndexingWarning"
-
         android:allowBackup="true"
-        android:supportsRtl="true"
-
         android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:theme="@style/AppTheme"
-        android:label="@string/app_name">
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+        tools:ignore="GoogleAppIndexingWarning">
 
-        <activity
-            android:name=".Home"
-            android:screenOrientation="landscape"
-            android:configChanges="keyboardHidden|orientation|screenSize">
-            
+        <activity android:name=".Start">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
 
-    </application>
+        <activity android:name=".Home" />
 
+    </application>
 </manifest>
