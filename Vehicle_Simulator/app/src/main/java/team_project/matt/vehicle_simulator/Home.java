@@ -21,157 +21,73 @@ import android.widget.Toast;
 
 import java.util.Locale;
 
-public class Home extends AppCompatActivity implements Display, BluetoothNotification, ActivityCompat.OnRequestPermissionsResultCallback
+public class Home extends AppCompatActivity implements BluetoothPermissions, VehicleDashboard, ActivityCompat.OnRequestPermissionsResultCallback
 {
     final int          REQUEST_CODE_LOCATION = 1;
     final int REQUEST_CODE_BLUETOOTH_ENABLED = 2;
 
-    // responds to BLE interface
-    BluetoothNotificationResponse respond;
+    BluetoothPermissionsResult respond;     // respond to permission request
+    VehicleManager             vehicle;     // interact with vehicle
 
-    // manages interface between user and the service, such as managing speed, battery etc.
-    VehicleManager vehicle;
-
-    // warnings
-    ImageButton btnSeatbelt, btnLightsFault, btnTyrePressure, btnWiperFluid, btnAirbag, btnBrakeFault, btnABS, btnEV;
-    ImageView temperatureIcon;
-    SeekBar   temperature;
-
-    // controls
-    ImageButton btnLights, btnParkingBrake, btnCharge, btnLeftIndicator, btnRightIndicator, btnAccelerate, btnBrake;
+    // UI controls
+    ImageButton btnSeatbelt,    btnLightsFault,  btnTyrePressure, btnWiperFluid, btnAirbag,      btnBrakeFault, btnABS,   btnEV;    // warnings
+    SeekBar     temperatureBar;
+    ImageButton btnLights,      btnParkingBrake, btnCharge,       btnLeftSignal, btnRightSignal, btnAccelerate, btnBrake;           // controls
 
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home_loading);
 
-        // holds all info about characteristics and the service itself, and communicates changes to BLE
+        // communicates with BLE, including any changes to vehicle state
         VehicleService vehicleService = new VehicleService();
 
-        // create ble instance, this activity will take requests, vehicle interface will receieve status updates
-        BluetoothLE bluetoothDevice = new BluetoothLE(this, vehicleService);
+        // manages bluetooth hardware and GATT server, broadcasts data across BLE technology
+        // create BLE instance for vehicle service, provide interfaces to communicate results of setup
+        BluetoothLE bluetoothDevice = new BluetoothLE(this, this, this, vehicleService);
 
-        // ble will receive user responses to requests
+        // BLE handles responses sent by this activity
         respond = bluetoothDevice;
 
-        // create interface to vehicle
-        vehicle = new VehicleManager(this, vehicleService, this);
+        // give service to vehicle manager, it will communicate interface changes to the service, and the service can notify BLE
+        vehicle = new VehicleManager(vehicleService, this);
 
-        // initiate setup of ble (requests permissions, enable bluetooth device etc.)
-        // this runs asynchronously, and results are received through interface
-        vehicleService.beginSetup(bluetoothDevice, this);
-    }
-
-    // once ble is started, it will call this method to request location permission from the user
-    @Override
-    public void requestLocation()
-    {
-        int locationPermission = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION);
-
-        // not granted yet
-        if (locationPermission == PackageManager.PERMISSION_DENIED)
-        {
-            // ask for user choice and respond to request
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_LOCATION);
-        }
-
-        // grant access to ble
-        else respond.requestLocationResult(true);
-    }
-
-    // if permissions are needed, ask for them and respond to ble with user choice
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
-    {
-        if (requestCode == REQUEST_CODE_LOCATION)
-        {
-            boolean isPermissionGranted = false;
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) isPermissionGranted = true;
-            respond.requestLocationResult(isPermissionGranted);
-        }
-    }
-
-    // once permissions are granted ble will request bluetooth hardware is switched on if its currently off
-    @Override
-    public void enableAdapter()
-    {
-        Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-        startActivityForResult(intent, REQUEST_CODE_BLUETOOTH_ENABLED);
-    }
-
-    // once user has provided their choice, this method is called and returns result to ble
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data)
-    {
-        if (requestCode == REQUEST_CODE_BLUETOOTH_ENABLED)
-        {
-            boolean isEnabled = false;
-            if (resultCode == RESULT_OK) isEnabled = true;
-            respond.enableAdapterResult(isEnabled);
-        }
-    }
-
-    // ble will call this method if user denies permission or bluetooth access, or if any internal error occurs
-    @Override
-    public void setupFailed(String message)
-    {
-        showToast(message, Toast.LENGTH_LONG);
-        finish();
-    }
-
-    // setup went smoothly, start the vehicle
-    @Override
-    public void setupComplete()
-    {
-        vehicle.initialise();
+        // initiate setup of BLE, if successful, calls setupComplete()
+        vehicle.setupBluetooth(bluetoothDevice);
     }
 
     @Override
-    public void showToast(final String message, final int length)
+    protected void onPause()
     {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                Toast.makeText(Home.this, message, length).show();
-            }
-        });
-    }
-
-    @Override
-    public void updateDeviceCount(final int noDevices)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                ImageView signal = findViewById(R.id.signalIcon);
-
-                if (noDevices > 0) signal.setForeground(getDrawable(R.drawable.connection_green));
-                else               signal.setForeground(getDrawable(R.drawable.connection_grey));
-
-                TextView txtDeviceCount = findViewById(R.id.deviceCount);
-                txtDeviceCount.setText(String.format(Locale.getDefault(), "%d", noDevices));
-            }
-        });
-    }
-
-    // this method is called by the vehicle service once it has launched GATT
-    @Override
-    public void vehicleStarted()
-    {
-        loadVehicleInterface();
-        vehicle.start();
+        vehicle.stop();
+        super.onPause();
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private void loadVehicleInterface()
+    private void startSimulator()
     {
         setContentView(R.layout.activity_home_vehicle_interface);
 
-        btnSeatbelt = findViewById(R.id.seatbelt);
+        ImageView signal = findViewById(R.id.signalIcon);
+        btnSeatbelt      = findViewById(R.id.seatbelt);
+        btnLightsFault   = findViewById(R.id.lightWarning);
+        btnTyrePressure  = findViewById(R.id.lowTyrePressure);
+        btnWiperFluid    = findViewById(R.id.lowWiperFluid);
+        btnAirbag        = findViewById(R.id.airbag);
+        btnBrakeFault    = findViewById(R.id.brakeWarning);
+        btnABS           = findViewById(R.id.absWarning);
+        btnEV            = findViewById(R.id.evWarning);
+        temperatureBar   = findViewById(R.id.temperatureBar);
+        btnLights        = findViewById(R.id.lights);
+        btnCharge        = findViewById(R.id.charge);
+        btnParkingBrake  = findViewById(R.id.parkingBrake);
+        btnLeftSignal    = findViewById(R.id.leftIndicator);
+        btnRightSignal   = findViewById(R.id.rightIndicator);
+        btnBrake         = findViewById(R.id.brake);
+        btnAccelerate    = findViewById(R.id.throttle);
+
+        signal.setForeground(getDrawable(R.drawable.connection_green));
+
         btnSeatbelt.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -184,7 +100,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnLightsFault = findViewById(R.id.lightWarning);
         btnLightsFault.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -197,7 +112,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnTyrePressure = findViewById(R.id.lowTyrePressure);
         btnTyrePressure.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -210,7 +124,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnWiperFluid = findViewById(R.id.lowWiperFluid);
         btnWiperFluid.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -223,7 +136,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnAirbag = findViewById(R.id.airbag);
         btnAirbag.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -236,7 +148,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnBrakeFault = findViewById(R.id.brakeWarning);
         btnBrakeFault.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -249,7 +160,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnABS = findViewById(R.id.absWarning);
         btnABS.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -262,7 +172,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnEV = findViewById(R.id.evWarning);
         btnEV.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -275,10 +184,7 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        temperatureIcon = findViewById(R.id.temperatureIcon);
-
-        temperature = findViewById(R.id.temperatureBar);
-        temperature.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
+        temperatureBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
         {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser)
@@ -293,7 +199,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
-        btnLights = findViewById(R.id.lights);
         btnLights.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -306,7 +211,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnCharge = findViewById(R.id.charge);
         btnCharge.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -319,7 +223,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnParkingBrake = findViewById(R.id.parkingBrake);
         btnParkingBrake.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -332,8 +235,7 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnLeftIndicator = findViewById(R.id.leftIndicator);
-        btnLeftIndicator.setOnTouchListener(new View.OnTouchListener()
+        btnLeftSignal.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
             public boolean onTouch(View v, MotionEvent event)
@@ -345,8 +247,7 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnRightIndicator = findViewById(R.id.rightIndicator);
-        btnRightIndicator.setOnTouchListener(new View.OnTouchListener()
+        btnRightSignal.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
             public boolean onTouch(View v, MotionEvent event)
@@ -358,7 +259,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnBrake = findViewById(R.id.brake);
         btnBrake.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -380,7 +280,6 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             }
         });
 
-        btnAccelerate = findViewById(R.id.throttle);
         btnAccelerate.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
@@ -401,263 +300,8 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
                 return true;
             }
         });
-    }
 
-    @Override
-    public void updateBatteryLevel(final int charge)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                String text = String.format(Locale.getDefault(), "%d", charge) + "%";
-
-                TextView txtBattery = findViewById(R.id.batteryLevel);
-                txtBattery.setText(text);
-            }
-        });
-    }
-
-    @Override
-    public void updateSpeed(final int speed)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                TextView txtSpeed = findViewById(R.id.speed);
-                txtSpeed.setText(String.format(Locale.getDefault(), "%d", speed));
-
-                if (speed > 0)
-                {
-                    btnCharge.setBackground(getDrawable(R.drawable.charging_icon_grey));
-                    btnCharge.setEnabled(false);
-
-                    btnParkingBrake.setBackground(getDrawable(R.drawable.parking_brake_grey));
-                    btnParkingBrake.setEnabled(false);
-
-                }
-
-                else
-                {
-                    btnCharge.setBackground(getDrawable(R.drawable.charging_icon_black));
-                    btnCharge.setEnabled(true);
-
-                    btnParkingBrake.setBackground(getDrawable(R.drawable.parking_brake_black));
-                    btnParkingBrake.setEnabled(true);
-                }
-            }
-        });
-    }
-
-    @Override
-    public void updateRange(final int milesLeft)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                TextView txtRange = findViewById(R.id.range);
-                txtRange.setText(String.format(Locale.getDefault(), "%d", milesLeft));
-            }
-        });
-    }
-
-    @Override
-    public void updateDistance(final int distance)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                TextView txtDistance = findViewById(R.id.distance);
-                txtDistance.setText(String.format(Locale.getDefault(), "%d", distance));
-            }
-        });
-    }
-
-    @Override
-    public void toggleWarning(final int state)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                ImageView warning = findViewById(R.id.masterWarning);
-
-                if (state == vehicle.STATE_OFF) warning.setBackground(getDrawable(R.drawable.master_warning_grey));
-                else                            warning.setBackground(getDrawable(R.drawable.master_warning_red));
-            }
-        });
-    }
-
-    @Override
-    public void toggleSeatbelt(final int state)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                ImageButton seatbelt = findViewById(R.id.seatbelt);
-
-                if (state == vehicle.STATE_OFF) seatbelt.setBackground(getDrawable(R.drawable.seatbelt_warning_black));
-                else                            seatbelt.setBackground(getDrawable(R.drawable.seatbelt_warning_red));
-            }
-        });
-    }
-
-    @Override
-    public void toggleLights(final int state)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                if (state == vehicle.STATE_OFF)
-                {
-                    btnLights.setBackground(getDrawable(R.drawable.no_lightbeam_black));
-                    btnLightsFault.setBackground(getDrawable(R.drawable.no_lightbeam_black));
-                }
-
-                else if (state == vehicle.STATE_LIGHTS_ERR)
-                {
-                    btnLights.setBackground(getDrawable(R.drawable.no_lightbeam_black));
-                    btnLightsFault.setBackground(getDrawable(R.drawable.lights_fault_red));
-                }
-
-                else
-                {
-                    btnLightsFault.setBackground(getDrawable(R.drawable.no_lightbeam_black));
-
-                    if (state == vehicle.STATE_LIGHTS_LOW) btnLights.setBackground(getDrawable(R.drawable.med_lightbeam_green));
-                    else                                   btnLights.setBackground(getDrawable(R.drawable.high_lightbeam_blue));
-                }
-            }
-        });
-    }
-
-    @Override
-    public void toggleTyrePressure(final int state)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                ImageButton tyrePressure = findViewById(R.id.lowTyrePressure);
-
-                if (state == vehicle.STATE_OFF) tyrePressure.setBackground(getDrawable(R.drawable.low_tire_pressure_black));
-                else                            tyrePressure.setBackground(getDrawable(R.drawable.low_tire_pressure_red));
-            }
-        });
-    }
-
-    @Override
-    public void toggleWiperFluid(final int state)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                ImageButton wiperFluid = findViewById(R.id.lowWiperFluid);
-
-                if (state == vehicle.STATE_OFF) wiperFluid.setBackground(getDrawable(R.drawable.low_wiper_fluid_black));
-                else                            wiperFluid.setBackground(getDrawable(R.drawable.low_wiper_fluid_red));
-            }
-        });
-    }
-
-    @Override
-    public void toggleAirbag(final int state)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                ImageButton airbag = findViewById(R.id.airbag);
-
-                if (state == vehicle.STATE_OFF) airbag.setBackground(getDrawable(R.drawable.airbag_fault_black));
-                else                            airbag.setBackground(getDrawable(R.drawable.airbag_fault_red));
-            }
-        });
-    }
-
-    @Override
-    public void toggleBrakeFault(final int state)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                ImageButton brakeFault = findViewById(R.id.brakeWarning);
-
-                if      (state == vehicle.STATE_OFF)         brakeFault.setBackground(getDrawable(R.drawable.brake_warning_black));
-                else if (state == vehicle.STATE_WARNING_LOW) brakeFault.setBackground(getDrawable(R.drawable.brake_warning_orange));
-                else                                         brakeFault.setBackground(getDrawable(R.drawable.brake_warning_red));
-            }
-        });
-    }
-
-    @Override
-    public void toggleABSFault(final int state)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                ImageButton ABSFault = findViewById(R.id.absWarning);
-
-                if      (state == vehicle.STATE_OFF)         ABSFault.setBackground(getDrawable(R.drawable.abs_fault_black));
-                else if (state == vehicle.STATE_WARNING_LOW) ABSFault.setBackground(getDrawable(R.drawable.abs_fault_orange));
-                else                                         ABSFault.setBackground(getDrawable(R.drawable.abs_fault_red));
-            }
-        });
-    }
-
-    @Override
-    public void toggleEVFault(final int state)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                ImageButton EVFault = findViewById(R.id.evWarning);
-
-                if      (state == vehicle.STATE_OFF)         EVFault.setBackground(getDrawable(R.drawable.electric_drive_system_fault_black));
-                else if (state == vehicle.STATE_WARNING_LOW) EVFault.setBackground(getDrawable(R.drawable.electric_drive_system_fault_orange));
-                else                                         EVFault.setBackground(getDrawable(R.drawable.electric_drive_system_fault_red));
-            }
-        });
-    }
-
-    @Override
-    public void updateBatteryTemperature(final int temperature)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                if      (temperature > 20) temperatureIcon.setBackground(getDrawable(R.drawable.temp_red));
-                else if (temperature < 10) temperatureIcon.setBackground(getDrawable(R.drawable.temp_blue));
-                else                       temperatureIcon.setBackground(getDrawable(R.drawable.temp_grey));
-
-                TextView txtTemperature = findViewById(R.id.temperature);
-                txtTemperature.setText(String.format(Locale.getDefault(), "%d", temperature));
-            }
-        });
+        vehicle.start();
     }
 
     void toggleSpeedControls(boolean enabled)
@@ -678,8 +322,278 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
         btnBrake.setEnabled(enabled);
     }
 
+    // DASHBOARD INTERFACE
+    // -----------------------------------------------------------------------------------------------------------------------------
     @Override
-    public void updateChargeMode(final boolean isCharging)
+    public void showToast(final String message, final int length)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run() { Toast.makeText(Home.this, message, length).show(); }
+        });
+    }
+
+    @Override
+    public void vehicleReady() { startSimulator(); }
+
+    @Override
+    public void updateDeviceCount(final int noDevices)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                TextView deviceCount = findViewById(R.id.deviceCount);
+                deviceCount.setText(String.format(Locale.getDefault(), "%d", noDevices));
+            }
+        });
+    }
+
+    @Override
+    public void updateBatteryLevel(final int newBatteryLevel)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                TextView battery = findViewById(R.id.batteryLevel);
+                battery.setText(String.format(Locale.getDefault(), "%d", newBatteryLevel));
+            }
+        });
+    }
+
+    @Override
+    public void updateSpeed(final int newSpeed)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                TextView speed = findViewById(R.id.speed);
+                speed.setText(String.format(Locale.getDefault(), "%d", newSpeed));
+
+                if (newSpeed > 0)
+                {
+                    // cannot charge or engage parking brake during driving
+                    btnCharge.setForeground(getDrawable(R.drawable.charging_icon_grey));
+                    btnCharge.setEnabled(false);
+
+                    btnParkingBrake.setForeground(getDrawable(R.drawable.parking_brake_grey));
+                    btnParkingBrake.setEnabled(false);
+                }
+
+                else
+                {
+                    // safe to charge and engage parking brake
+                    btnCharge.setForeground(getDrawable(R.drawable.charging_icon_black));
+                    btnCharge.setEnabled(true);
+
+                    btnParkingBrake.setForeground(getDrawable(R.drawable.parking_brake_black));
+                    btnParkingBrake.setEnabled(true);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void updateRange(final int newRange)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                TextView range = findViewById(R.id.range);
+                range.setText(String.format(Locale.getDefault(), "%d", newRange));
+            }
+        });
+    }
+
+    @Override
+    public void updateDistance(final int newDistance)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                TextView distance = findViewById(R.id.distance);
+                distance.setText(String.format(Locale.getDefault(), "%d", newDistance));
+            }
+        });
+    }
+
+    @Override
+    public void toggleSeatbelt(final int newState)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton seatbelt = findViewById(R.id.seatbelt);
+
+                if (newState == vehicle.STATE_OFF) seatbelt.setForeground(getDrawable(R.drawable.seatbelt_warning_black));
+                else                               seatbelt.setForeground(getDrawable(R.drawable.seatbelt_warning_red));
+            }
+        });
+    }
+
+    @Override
+    public void toggleLights(final int newState)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                if (newState == vehicle.STATE_OFF)
+                {
+                    // reset warning and control icon
+                    btnLights.setForeground(getDrawable(R.drawable.no_lightbeam_black));
+                    btnLightsFault.setForeground(getDrawable(R.drawable.no_lightbeam_black));
+                }
+
+                else if (newState == vehicle.STATE_LIGHTS_ERR)
+                {
+                    // reset control icon, highlight warning icon
+                    btnLights.setForeground(getDrawable(R.drawable.no_lightbeam_black));
+                    btnLightsFault.setForeground(getDrawable(R.drawable.lights_fault_red));
+                }
+
+                else
+                {
+                    // highlight control icon, reset warning icon
+                    btnLightsFault.setForeground(getDrawable(R.drawable.no_lightbeam_black));
+
+                    if (newState == vehicle.STATE_LIGHTS_LOW) btnLights.setForeground(getDrawable(R.drawable.med_lightbeam_green));
+                    else                                      btnLights.setForeground(getDrawable(R.drawable.high_lightbeam_blue));
+                }
+            }
+        });
+    }
+
+    @Override
+    public void toggleTyrePressure(final int newState)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton tyrePressure = findViewById(R.id.lowTyrePressure);
+
+                if (newState == vehicle.STATE_OFF) tyrePressure.setForeground(getDrawable(R.drawable.low_tire_pressure_black));
+                else                               tyrePressure.setForeground(getDrawable(R.drawable.low_tire_pressure_red));
+            }
+        });
+    }
+
+    @Override
+    public void toggleWiperFluid(final int newState)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton wiperFluid = findViewById(R.id.lowWiperFluid);
+
+                if (newState == vehicle.STATE_OFF) wiperFluid.setForeground(getDrawable(R.drawable.low_wiper_fluid_black));
+                else                               wiperFluid.setForeground(getDrawable(R.drawable.low_wiper_fluid_red));
+            }
+        });
+    }
+
+    @Override
+    public void toggleAirbag(final int newState)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton airbag = findViewById(R.id.airbag);
+
+                if (newState == vehicle.STATE_OFF) airbag.setForeground(getDrawable(R.drawable.airbag_fault_black));
+                else                               airbag.setForeground(getDrawable(R.drawable.airbag_fault_red));
+            }
+        });
+    }
+
+    @Override
+    public void toggleBrakeFault(final int newState)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton brakeWarning = findViewById(R.id.brakeWarning);
+
+                if      (newState == vehicle.STATE_OFF)         brakeWarning.setForeground(getDrawable(R.drawable.brake_warning_black));
+                else if (newState == vehicle.STATE_WARNING_LOW) brakeWarning.setForeground(getDrawable(R.drawable.brake_warning_orange));
+                else                                            brakeWarning.setForeground(getDrawable(R.drawable.brake_warning_red));
+            }
+        });
+    }
+
+    @Override
+    public void toggleABSFault(final int newState)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton ABSWarning = findViewById(R.id.absWarning);
+
+                if      (newState == vehicle.STATE_OFF)         ABSWarning.setForeground(getDrawable(R.drawable.abs_fault_black));
+                else if (newState == vehicle.STATE_WARNING_LOW) ABSWarning.setForeground(getDrawable(R.drawable.abs_fault_orange));
+                else                                            ABSWarning.setForeground(getDrawable(R.drawable.abs_fault_red));
+            }
+        });
+    }
+
+    @Override
+    public void toggleEVFault(final int newState)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton EVWarning = findViewById(R.id.evWarning);
+
+                if      (newState == vehicle.STATE_OFF)         EVWarning.setForeground(getDrawable(R.drawable.electric_drive_system_fault_black));
+                else if (newState == vehicle.STATE_WARNING_LOW) EVWarning.setForeground(getDrawable(R.drawable.electric_drive_system_fault_orange));
+                else                                            EVWarning.setForeground(getDrawable(R.drawable.electric_drive_system_fault_red));
+            }
+        });
+    }
+
+    @Override
+    public void updateBatteryTemperature(final int newTemperature)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                TextView temperature = findViewById(R.id.temperature);
+                temperature.setText(String.format(Locale.getDefault(), "%d", newTemperature));
+
+                if (temperatureBar.getProgress() != newTemperature) temperatureBar.setProgress(newTemperature);
+            }
+        });
+    }
+
+    @Override
+    public void toggleChargeMode(final boolean isCharging)
     {
         runOnUiThread(new Runnable()
         {
@@ -688,39 +602,37 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
             {
                 toggleSpeedControls(!isCharging);
 
-                if (isCharging) btnCharge.setBackground(getDrawable(R.drawable.charging_icon_green));
-                else            btnCharge.setBackground(getDrawable(R.drawable.charging_icon_black));
+                if (isCharging) btnCharge.setForeground(getDrawable(R.drawable.charging_icon_green));
+                else            btnCharge.setForeground(getDrawable(R.drawable.charging_icon_black));
             }
         });
     }
 
     @Override
-    public void toggleParkingBrake(final int state)
+    public void toggleParkingBrake(final int newState)
     {
         runOnUiThread(new Runnable()
         {
             @Override
             public void run()
             {
-                ImageButton parkingBrake = findViewById(R.id.parkingBrake);
-
-                if (state == vehicle.STATE_OFF)
+                if (newState == vehicle.STATE_OFF)
                 {
                     toggleSpeedControls(true);
-                    parkingBrake.setBackground(getDrawable(R.drawable.parking_brake_black));
+                    btnParkingBrake.setForeground(getDrawable(R.drawable.parking_brake_black));
                 }
 
                 else
                 {
                     toggleSpeedControls(false);
-                    parkingBrake.setBackground(getDrawable(R.drawable.parking_brake_red));
+                    btnParkingBrake.setForeground(getDrawable(R.drawable.parking_brake_red));
                 }
             }
         });
     }
 
     @Override
-    public void toggleIndicator(final int state)
+    public void toggleTurnSignal(final int newState)
     {
         runOnUiThread(new Runnable()
         {
@@ -732,40 +644,78 @@ public class Home extends AppCompatActivity implements Display, BluetoothNotific
                 blink.setRepeatCount(Animation.INFINITE);
                 blink.setRepeatMode(Animation.REVERSE);
 
-                if (state == vehicle.STATE_OFF)
+                if (newState == vehicle.STATE_OFF)
                 {
-                    btnLeftIndicator.setBackground(getDrawable(R.drawable.left_indicator_black));
-                    btnRightIndicator.setBackground(getDrawable(R.drawable.right_indicator_black));
+                    // reset both turn signals
+                    btnLeftSignal.setForeground(getDrawable(R.drawable.left_indicator_black));
+                    btnRightSignal.setForeground(getDrawable(R.drawable.right_indicator_black));
 
-                    btnRightIndicator.setAnimation(null);
-                    btnLeftIndicator.setAnimation(null);
+                    btnRightSignal.setAnimation(null);
+                    btnLeftSignal.setAnimation(null);
                 }
 
-                else if (state == vehicle.STATE_SIGNAL_RIGHT)
+                else if (newState == vehicle.STATE_SIGNAL_RIGHT)
                 {
-                    btnLeftIndicator.setBackground(getDrawable(R.drawable.left_indicator_black));
-                    btnRightIndicator.setBackground(getDrawable(R.drawable.right_indicator_green));
+                    // highlight right signal
+                    btnLeftSignal.setForeground(getDrawable(R.drawable.left_indicator_black));
+                    btnRightSignal.setForeground(getDrawable(R.drawable.right_indicator_green));
 
-                    btnRightIndicator.setAnimation(blink);
-                    btnLeftIndicator.setAnimation(null);
+                    btnRightSignal.setAnimation(blink);
+                    btnLeftSignal.setAnimation(null);
                 }
 
                 else
                 {
-                    btnLeftIndicator.setBackground(getDrawable(R.drawable.left_indicator_green));
-                    btnRightIndicator.setBackground(getDrawable(R.drawable.right_indicator_black));
+                    // highlight left signal
+                    btnLeftSignal.setForeground(getDrawable(R.drawable.left_indicator_green));
+                    btnRightSignal.setForeground(getDrawable(R.drawable.right_indicator_black));
 
-                    btnRightIndicator.setAnimation(null);
-                    btnLeftIndicator.setAnimation(blink);
+                    btnRightSignal.setAnimation(null);
+                    btnLeftSignal.setAnimation(blink);
                 }
             }
         });
     }
+    // -----------------------------------------------------------------------------------------------------------------------------
+
+    // PERMISSIONS INTERFACE
+    // ----------------------------------------------------------------------------------------------------------------
+    @Override
+    public void requestLocation()
+    {
+        // location permission not granted yet, request
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_DENIED)
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_LOCATION);
+
+        // already granted
+        else respond.requestLocationResult(true);
+    }
 
     @Override
-    protected void onDestroy()
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] results)
     {
-        super.onDestroy();
-        vehicle.stop();
+        if (requestCode == REQUEST_CODE_LOCATION)
+            respond.requestLocationResult(results[0] == PackageManager.PERMISSION_GRANTED);
     }
+
+    @Override
+    public void enableAdapter() { startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), REQUEST_CODE_BLUETOOTH_ENABLED); }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data)
+    {
+        if (requestCode == REQUEST_CODE_BLUETOOTH_ENABLED)
+            respond.enableAdapterResult(resultCode == RESULT_OK);
+    }
+
+    @Override
+    public void setupFailed(String error)
+    {
+        showToast(error, Toast.LENGTH_LONG);
+        finish();
+    }
+
+    @Override
+    public void setupComplete() { vehicle.setupVehicle(this); }
+    // ----------------------------------------------------------------------------------------------------------------
 }

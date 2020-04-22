@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class VehicleService implements BluetoothServerStatus
 {
-    private Display display;
+    private VehicleDashboard vehicleDashboard;
 
     private BluetoothLE bluetoothDevice;
 
@@ -92,15 +92,12 @@ public class VehicleService implements BluetoothServerStatus
     
     private ArrayList<Characteristic> characteristics = new ArrayList<>();
 
-    void beginSetup(BluetoothLE bluetoothDevice, Display display)
+    void beginSetup(BluetoothLE bluetoothDevice, VehicleDashboard vehicleDashboard)
     {
-        this.bluetoothDevice = bluetoothDevice;
-        this.display = display;
+        this.bluetoothDevice  = bluetoothDevice;
+        this.vehicleDashboard = vehicleDashboard;
 
-        // asynchronous call
-        // - will check location permission and bluetooth status
-        // - if enabled successfully, sendAdapterEnabledResult() will continue process
-        bluetoothDevice.enable();
+        bluetoothDevice.beginSetup();
     }
 
     void start()
@@ -111,7 +108,7 @@ public class VehicleService implements BluetoothServerStatus
             bluetoothDevice.startAdvertising(UUID);
         }
 
-        else display.showToast("Bluetooth device is not enabled.", Toast.LENGTH_LONG);
+        else vehicleDashboard.showToast("Bluetooth device is not enabled.", Toast.LENGTH_LONG);
     }
 
     private void buildCharacteristics()
@@ -271,7 +268,7 @@ public class VehicleService implements BluetoothServerStatus
     public void advertiseResult(boolean started)
     {
         if (started) startGATT();
-        else display.showToast("Could not broadcast device.", Toast.LENGTH_LONG);
+        else vehicleDashboard.showToast("Could not broadcast device.", Toast.LENGTH_LONG);
     }
 
     private void startGATT()
@@ -291,15 +288,15 @@ public class VehicleService implements BluetoothServerStatus
     @Override
     public void serviceAddedResult(boolean added)
     {
-        if (!added) display.showToast("Could not start vehicle.", Toast.LENGTH_LONG);
+        if (!added) vehicleDashboard.showToast("Could not start vehicle.", Toast.LENGTH_LONG);
         else serviceAdded = true;
     }
 
     @Override
     public void GATTResult(boolean started)
     {
-        if (!started) display.showToast("Could not start vehicle.", Toast.LENGTH_LONG);
-        else display.vehicleStarted();
+        if (!started) vehicleDashboard.showToast("Could not start vehicle.", Toast.LENGTH_LONG);
+        else          vehicleDashboard.vehicleReady();
     }
 
     void stop()

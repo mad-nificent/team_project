@@ -1,5 +1,9 @@
 package team_project.matt.vehicle_simulator;
 
+import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
+
 class SpeedManager
 {
     // states of throttle
@@ -21,13 +25,16 @@ class SpeedManager
     private int     speed;
     private double  distance;
 
+    private Activity      context;
     private VehicleStatus updateStatus;
 
-    SpeedManager(VehicleStatus vehicleStatus)
+    SpeedManager(Activity context, VehicleStatus vehicleStatus)
     {
+        this.context = context;
         updateStatus = vehicleStatus;
 
-        distance = 0; // TODO: read from shared prefs
+        SharedPreferences sharedPreferences = context.getSharedPreferences(context.getResources().getString(R.string.filename), Context.MODE_PRIVATE);
+        distance = sharedPreferences.getInt(context.getResources().getString(R.string.distance_key), 0);
     }
 
     void start()
@@ -38,6 +45,8 @@ class SpeedManager
             state   = State.IDLE;
             speed   = MIN_SPEED;
 
+            updateStatus.notifyDistanceChanged((int) distance);
+
             new Thread(new Runnable() { @Override public void run() { loop(); } }).start();
         }
     }
@@ -45,7 +54,18 @@ class SpeedManager
     void accelerate() { if (started) state = State.ACCELERATING; }
     void decelerate() { if (started) state = State.IDLE; }
     void brake()      { if (started) state = State.BRAKING; }
-    void stop()       { if (started && speed == 0) started = false; }
+
+    void stop()
+    {
+        if (started)
+        {
+            SharedPreferences.Editor editor = context.getSharedPreferences(context.getResources().getString(R.string.filename), Context.MODE_PRIVATE).edit();
+            editor.putInt(context.getResources().getString(R.string.distance_key), (int) distance);
+            editor.apply();
+
+            started = false;
+        }
+    }
 
     int   speed() { return speed; }
     State state() { return state; }

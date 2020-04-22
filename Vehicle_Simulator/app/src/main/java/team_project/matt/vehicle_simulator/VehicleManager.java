@@ -1,249 +1,234 @@
 package team_project.matt.vehicle_simulator;
 
 import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
 
-class VehicleManager extends Activity implements VehicleStatus
+class VehicleManager implements VehicleStatus
 {
-    final int STATE_OFF = VehicleService.STATE_OFF;
-    final int STATE_ON  = VehicleService.STATE_ON;
-
+    // states of controls and warnings
+    final int STATE_OFF          = VehicleService.STATE_OFF;
+    final int STATE_ON           = VehicleService.STATE_ON;
     final int STATE_SIGNAL_LEFT  = VehicleService.STATE_SIGNAL_LEFT;
     final int STATE_SIGNAL_RIGHT = VehicleService.STATE_SIGNAL_RIGHT;
-
     final int STATE_LIGHTS_LOW   = VehicleService.STATE_LIGHTS_LOW;
     final int STATE_LIGHTS_HIGH  = VehicleService.STATE_LIGHTS_HIGH;
     final int STATE_LIGHTS_ERR   = VehicleService.STATE_LIGHTS_ERR;
-
     final int STATE_WARNING_LOW  = VehicleService.STATE_WARNING_LOW;
     final int STATE_WARNING_HIGH = VehicleService.STATE_WARNING_HIGH;
 
-    private Activity       context;
-    private Display        display;
-    private VehicleService vehicleService;
+    private Activity         context;               // used for shared preferences
+    private VehicleDashboard vehicleDashboard;      // update interface when vehicle state changes
+    private VehicleService   vehicleService;        // also send changes to service for broadcasting over BLE
 
-    // warnings
-    private int warningsActive = 0;
+    // state of warnings
     private int seatbelt;
     private int lowWiperFluid;
     private int lowTyrePressure;
-    private int airbagFault;
-    private int brakeFault;
-    private int ABSFault;
-    private int EVFault;
+    private int airbag;
+    private int brakeWarning;
+    private int ABS;
+    private int EV;
 
-    private BatteryManager battery;
+    // state of vehicle controls
+    private BatteryManager battery;                 // manages charge and temperature on background thread
+    private SpeedManager   motor;                   // manages speed and distance on another background thread
+    private int            range;                   // uses charge and speed to calculate miles left
+    private int            lights;
+    private int            parkingBrake;
+    private int            turnSignal;
 
-    // controls & stats
-    // -----------------------------------
-    private SpeedManager motor;
+    private boolean started = false;
 
-    private int turnSignal;
-    private int lights;
-    private int parkingBrake;
-    private int mileage;
-    // -----------------------------------
-
-    VehicleManager(Activity context, VehicleService vehicleService, Display display)
+    VehicleManager(VehicleService vehicleService, VehicleDashboard vehicleDashboard)
     {
-        this.vehicleService = vehicleService;
-        this.display = display;
+        this.vehicleService   = vehicleService;
+        this.vehicleDashboard = vehicleDashboard;
     }
 
-    void initialise()
+    void setupBluetooth(BluetoothLE bluetoothDevice) { vehicleService.beginSetup(bluetoothDevice, vehicleDashboard); }
+
+    void setupVehicle(Activity context)
     {
+        this.context = context;
+
+        battery = new BatteryManager(context, this, 5, 600, 3, 1000);
+        motor   = new SpeedManager(context, this);
+
+        // load defaults
+        SharedPreferences sharedPreferences = context.getSharedPreferences(context.getResources().getString(R.string.filename), Context.MODE_PRIVATE);
+        seatbelt        = sharedPreferences.getInt(context.getResources().getString(R.string.seatbelt_key), STATE_OFF);
+        lowWiperFluid   = sharedPreferences.getInt(context.getResources().getString(R.string.wiper_fluid_key), STATE_OFF);
+        lowTyrePressure = sharedPreferences.getInt(context.getResources().getString(R.string.tyre_pressure_key), STATE_OFF);
+        airbag          = sharedPreferences.getInt(context.getResources().getString(R.string.airbag_key), STATE_OFF);
+        brakeWarning    = sharedPreferences.getInt(context.getResources().getString(R.string.brake_key), STATE_OFF);
+        ABS             = sharedPreferences.getInt(context.getResources().getString(R.string.abs_key), STATE_OFF);
+        EV              = sharedPreferences.getInt(context.getResources().getString(R.string.ev_key), STATE_OFF);
+        lights          = sharedPreferences.getInt(context.getResources().getString(R.string.lights_key), STATE_OFF);
+        parkingBrake    = sharedPreferences.getInt(context.getResources().getString(R.string.parking_brake_key), STATE_ON);
+        turnSignal      = sharedPreferences.getInt(context.getResources().getString(R.string.turn_signal_key), STATE_OFF);
+        range           = 0;
+
+        // start the service
         vehicleService.start();
-
-        seatbelt        = STATE_OFF;
-        lowWiperFluid   = STATE_OFF;
-        lowTyrePressure = STATE_OFF;
-        airbagFault     = STATE_OFF;
-        brakeFault      = STATE_OFF;
-        ABSFault        = STATE_OFF;
-        EVFault         = STATE_OFF;
-
-        battery = new BatteryManager(context, this);
-        motor   = new SpeedManager(this);
-
-        mileage = 0;
     }
 
     void start()
     {
-        battery.turnOn();
-        motor.start();
+        started = true;
 
+        battery.turnOn();                   // loads battery defaults and sends out info to service and UI
+        motor.start();                      // loads distance and speed 0 and sends that out
+        calculateRange(motor.speed());      // load miles left and send that out
 
-        updateMilesRemaining(motor.speed());
-        // load variables from shared prefs and apply to battery, mileage etc.
+        // send other defaults out
+        vehicleService.getCharacteristic(VehicleService.Property.SEATBELT).setData(seatbelt);
+        vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW).setData(lowWiperFluid);
+        vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(lowTyrePressure);
+        vehicleService.getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(airbag);
+        vehicleService.getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(brakeWarning);
+        vehicleService.getCharacteristic(VehicleService.Property.ABS_ERR).setData(ABS);
+        vehicleService.getCharacteristic(VehicleService.Property.EV_ERR).setData(EV);
+        vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(lights);
+        vehicleService.getCharacteristic(VehicleService.Property.PARKING_BRAKE).setData(parkingBrake);
+        vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(turnSignal);
+
+        // update UI
+        vehicleDashboard.toggleSeatbelt(seatbelt);
+        vehicleDashboard.toggleWiperFluid(lowWiperFluid);
+        vehicleDashboard.toggleTyrePressure(lowTyrePressure);
+        vehicleDashboard.toggleAirbag(airbag);
+        vehicleDashboard.toggleBrakeFault(brakeWarning);
+        vehicleDashboard.toggleABSFault(ABS);
+        vehicleDashboard.toggleEVFault(EV);
+        vehicleDashboard.toggleLights(lights);
+        vehicleDashboard.toggleParkingBrake(parkingBrake);
+        vehicleDashboard.toggleTurnSignal(turnSignal);
     }
 
     void stop()
     {
-        if (parkingBrake == STATE_ON)
+        if (started && context != null)
         {
-            battery.turnOff();
-            motor.stop();
+            // save state of vehicle
+            SharedPreferences.Editor editor = context.getSharedPreferences(context.getResources().getString(R.string.filename), Context.MODE_PRIVATE).edit();
+            editor.putInt(context.getResources().getString(R.string.seatbelt_key), seatbelt);
+            editor.putInt(context.getResources().getString(R.string.wiper_fluid_key), lowWiperFluid);
+            editor.putInt(context.getResources().getString(R.string.tyre_pressure_key), lowTyrePressure);
+            editor.putInt(context.getResources().getString(R.string.airbag_key), airbag);
+            editor.putInt(context.getResources().getString(R.string.brake_key), brakeWarning);
+            editor.putInt(context.getResources().getString(R.string.abs_key), ABS);
+            editor.putInt(context.getResources().getString(R.string.ev_key), EV);
+            editor.putInt(context.getResources().getString(R.string.lights_key), lights);
+            editor.putInt(context.getResources().getString(R.string.parking_brake_key), parkingBrake);
+            editor.putInt(context.getResources().getString(R.string.turn_signal_key), turnSignal);
+            editor.apply();
 
-            vehicleService.stop();
+            battery.turnOff();      // will save battery state before shutting off
+            motor.stop();           // will save distance as well
+            vehicleService.stop();  // close service and BLE
+
+            started = false;
         }
     }
 
     void toggleSeatbelt()
     {
-        if (seatbelt == STATE_OFF)
-        {
-            seatbelt = STATE_ON;
-            increaseWarningCount();
-        }
+        if (seatbelt == STATE_OFF) seatbelt = STATE_ON;
+        else                       seatbelt = STATE_OFF;
 
-        else
+        if (started)
         {
-            seatbelt = STATE_OFF;
-            decreaseWarningCount();
+            vehicleService.getCharacteristic(VehicleService.Property.SEATBELT).setData(seatbelt);
+            vehicleDashboard.toggleSeatbelt(seatbelt);
         }
-
-        vehicleService.getCharacteristic(VehicleService.Property.SEATBELT).setData(seatbelt);
-        display.toggleSeatbelt(seatbelt);
     }
 
     void toggleLightsFault()
     {
-        if (lights != STATE_LIGHTS_ERR)
-        {
-            lights = STATE_LIGHTS_ERR;
-            increaseWarningCount();
-        }
+        if (lights != STATE_LIGHTS_ERR) lights = STATE_LIGHTS_ERR;
+        else                            lights = STATE_OFF;
 
-        else
+        if (started)
         {
-            lights = STATE_OFF;
-            decreaseWarningCount();
+            vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(lights);
+            vehicleDashboard.toggleLights(lights);
         }
-
-        vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(lights);
-        display.toggleLights(lights);
     }
 
     void toggleTyrePressure()
     {
-        if (lowTyrePressure == STATE_OFF)
-        {
-            lowTyrePressure = STATE_ON;
-            increaseWarningCount();
-        }
+        if (lowTyrePressure == STATE_OFF) lowTyrePressure = STATE_ON;
+        else                              lowTyrePressure = STATE_OFF;
 
-        else
+        if (started)
         {
-            lowTyrePressure = STATE_OFF;
-            decreaseWarningCount();
+            vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(lowTyrePressure);
+            vehicleDashboard.toggleTyrePressure(lowTyrePressure);
         }
-
-        vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(lowTyrePressure);
-        display.toggleTyrePressure(lowTyrePressure);
     }
 
     void toggleWiperFluid()
     {
-        if (lowWiperFluid == STATE_OFF)
-        {
-            lowWiperFluid = STATE_ON;
-            increaseWarningCount();
-        }
+        if (lowWiperFluid == STATE_OFF) lowWiperFluid = STATE_ON;
+        else                            lowWiperFluid = STATE_OFF;
 
-        else
+        if (started)
         {
-            lowWiperFluid = STATE_OFF;
-            decreaseWarningCount();
+            vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW).setData(lowWiperFluid);
+            vehicleDashboard.toggleWiperFluid(lowWiperFluid);
         }
-
-        vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW).setData(lowWiperFluid);
-        display.toggleWiperFluid(lowWiperFluid);
     }
 
     void toggleAirbag()
     {
-        if (airbagFault == STATE_OFF)
-        {
-            airbagFault = STATE_ON;
-            increaseWarningCount();
-        }
+        if (airbag == STATE_OFF) airbag = STATE_ON;
+        else                     airbag = STATE_OFF;
 
-        else
+        if (started)
         {
-            airbagFault = STATE_OFF;
-            decreaseWarningCount();
+            vehicleService.getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(airbag);
+            vehicleDashboard.toggleAirbag(airbag);
         }
-
-        vehicleService.getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(airbagFault);
-        display.toggleAirbag(airbagFault);
     }
 
     void toggleBrakeFault()
     {
-        if (brakeFault == STATE_OFF)
-        {
-            brakeFault = STATE_WARNING_LOW;
-            increaseWarningCount();
-        }
-        else if (brakeFault == STATE_WARNING_LOW) brakeFault = STATE_WARNING_HIGH;
-        else
-        {
-            brakeFault = STATE_OFF;
-            decreaseWarningCount();
-        }
+        if (brakeWarning == STATE_OFF)              brakeWarning = STATE_WARNING_LOW;
+        else if (brakeWarning == STATE_WARNING_LOW) brakeWarning = STATE_WARNING_HIGH;
+        else                                        brakeWarning = STATE_OFF;
 
-        vehicleService.getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(brakeFault);
-        display.toggleBrakeFault(brakeFault);
+        if (started)
+        {
+            vehicleService.getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(brakeWarning);
+            vehicleDashboard.toggleBrakeFault(brakeWarning);
+        }
     }
 
     void toggleABS()
     {
-        if (ABSFault == STATE_OFF)
-        {
-            ABSFault = STATE_WARNING_LOW;
-            increaseWarningCount();
-        }
-        else if (ABSFault == STATE_WARNING_LOW) ABSFault = STATE_WARNING_HIGH;
-        else
-        {
-            ABSFault = STATE_OFF;
-            decreaseWarningCount();
-        }
+        if (ABS == STATE_OFF)              ABS = STATE_WARNING_LOW;
+        else if (ABS == STATE_WARNING_LOW) ABS = STATE_WARNING_HIGH;
+        else                               ABS = STATE_OFF;
 
-        vehicleService.getCharacteristic(VehicleService.Property.ABS_ERR).setData(ABSFault);
-        display.toggleABSFault(ABSFault);
+        if (started)
+        {
+            vehicleService.getCharacteristic(VehicleService.Property.ABS_ERR).setData(ABS);
+            vehicleDashboard.toggleABSFault(ABS);
+        }
     }
 
     void toggleEV()
     {
-        if (EVFault == STATE_OFF)
+        if (EV == STATE_OFF)              EV = STATE_WARNING_LOW;
+        else if (EV == STATE_WARNING_LOW) EV = STATE_WARNING_HIGH;
+        else                              EV = STATE_OFF;
+
+        if (started)
         {
-            EVFault = STATE_WARNING_LOW;
-            increaseWarningCount();
+            vehicleService.getCharacteristic(VehicleService.Property.EV_ERR).setData(EV);
+            vehicleDashboard.toggleEVFault(EV);
         }
-        else if (EVFault == STATE_WARNING_LOW) EVFault = STATE_WARNING_HIGH;
-        else
-        {
-            EVFault = STATE_OFF;
-            decreaseWarningCount();
-        }
-
-        vehicleService.getCharacteristic(VehicleService.Property.EV_ERR).setData(EVFault);
-        display.toggleEVFault(EVFault);
-    }
-
-    private void increaseWarningCount()
-    {
-        if (warningsActive == 0) display.toggleWarning(STATE_ON);
-
-        warningsActive++;
-    }
-
-    private void decreaseWarningCount()
-    {
-        warningsActive--;
-
-        if (warningsActive == 0) display.toggleWarning(STATE_OFF);
     }
 
     void setTemperature(int temperature) { battery.setTemperature(temperature); }
@@ -254,10 +239,17 @@ class VehicleManager extends Activity implements VehicleStatus
 
         if      (lights == STATE_OFF)        lights = STATE_LIGHTS_LOW;
         else if (lights == STATE_LIGHTS_LOW) lights = STATE_LIGHTS_HIGH;
-        else                                 lights = STATE_OFF;
+        else
+        {
+            lights = STATE_OFF;
+            if (!consumingPower()) battery.idle();
+        }
 
-        vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(lights);
-        display.toggleLights(lights);
+        if (started)
+        {
+            vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(lights);
+            vehicleDashboard.toggleLights(lights);
+        }
     }
 
     void toggleParkingBrake()
@@ -265,8 +257,11 @@ class VehicleManager extends Activity implements VehicleStatus
         if (parkingBrake == STATE_OFF) parkingBrake = STATE_ON;
         else                           parkingBrake = STATE_OFF;
 
-        vehicleService.getCharacteristic(VehicleService.Property.PARKING_BRAKE).setData(parkingBrake);
-        display.toggleParkingBrake(parkingBrake);
+        if (started)
+        {
+            vehicleService.getCharacteristic(VehicleService.Property.PARKING_BRAKE).setData(parkingBrake);
+            vehicleDashboard.toggleParkingBrake(parkingBrake);
+        }
     }
 
     void toggleCharging() { battery.toggleCharging(); }
@@ -274,19 +269,33 @@ class VehicleManager extends Activity implements VehicleStatus
     void toggleLeftIndicator()
     {
         if (turnSignal != STATE_SIGNAL_LEFT) turnSignal = STATE_SIGNAL_LEFT;
-        else                                 turnSignal = STATE_OFF;
+        else
+        {
+            turnSignal = STATE_OFF;
+            if (!consumingPower()) battery.idle();
+        }
 
-        vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(turnSignal);
-        display.toggleIndicator(turnSignal);
+        if (started)
+        {
+            vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(turnSignal);
+            vehicleDashboard.toggleTurnSignal(turnSignal);
+        }
     }
 
     void toggleRightIndicator()
     {
         if (turnSignal != STATE_SIGNAL_RIGHT) turnSignal = STATE_SIGNAL_RIGHT;
-        else                                  turnSignal = STATE_OFF;
+        else
+        {
+            turnSignal = STATE_OFF;
+            if (!consumingPower()) battery.idle();
+        }
 
-        vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(turnSignal);
-        display.toggleIndicator(turnSignal);
+        if (started)
+        {
+            vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(turnSignal);
+            vehicleDashboard.toggleTurnSignal(turnSignal);
+        }
     }
 
     void accelerate()
@@ -294,101 +303,111 @@ class VehicleManager extends Activity implements VehicleStatus
         // need power and brake disengaged
         if (battery.isOn() && battery.chargeLeft() > 0 && parkingBrake == STATE_OFF)
         {
+            motor.accelerate();
+
             // not cold start, adjust battery consumption to match current speed
             if (motor.speed() > 1) battery.increasePowerLevel(battery.minPowerConsumption() * motor.speed());
-
-            motor.accelerate();
         }
     }
 
     void decelerate()
     {
+        motor.decelerate();
+
         if (!consumingPower()) battery.idle();
         else battery.decreasePowerLevel(battery.minPowerConsumption() * motor.speed());
-
-        motor.decelerate();
     }
 
     void brake()
     {
+        motor.brake();
+
         if (!consumingPower()) battery.idle();
         else battery.decreasePowerLevel(battery.minPowerConsumption() * motor.speed());
+    }
 
-        motor.brake();
+    private void calculateRange(int speed)
+    {
+        if (speed == 0) speed = 1;
+
+        // convert to secs
+        double timeToEmpty = battery.timeRemainingMs() / 1000;
+
+        // calculate range
+        double milesPerSec = (double) speed / 3600;
+        int          range =    (int) Math.round(milesPerSec * timeToEmpty);
+
+        if (started && range != this.range)
+        {
+            vehicleService.getCharacteristic(VehicleService.Property.RANGE).setData(range);
+            vehicleDashboard.updateRange(range);
+
+            this.range = range;
+        }
     }
 
     private boolean consumingPower()
     {
-        return false;
+        boolean consumingPower = false;
+
+        if      (motor.state() == SpeedManager.State.ACCELERATING)                       consumingPower = true;
+        else if        (lights == STATE_LIGHTS_LOW  || lights     == STATE_LIGHTS_HIGH)  consumingPower = true;
+        else if    (turnSignal == STATE_SIGNAL_LEFT || turnSignal == STATE_SIGNAL_RIGHT) consumingPower = true;
+
+        return consumingPower;
+    }
+
+    // VEHICLE STATUS INTERFACE
+    // -----------------------------------------------------------------------------------------------------------------------
+    @Override
+    public void notifyChargingStateChanged(boolean isCharging) { if (started) vehicleDashboard.toggleChargeMode(isCharging); }
+
+    @Override
+    public void notifyBatteryLevelChanged(int batteryLevel)
+    {
+        if (started)
+        {
+            vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(batteryLevel);
+            vehicleDashboard.updateBatteryLevel(batteryLevel);
+
+            calculateRange(motor.speed());
+        }
+
+        if (batteryLevel <= 0) decelerate();    // kill power to vehicle
     }
 
     @Override
-    public void notifyChargingStateChanged(boolean isCharging)
+    public void notifyBatteryTemperatureChanged(int temperature)
     {
-        display.updateChargeMode(isCharging);
-    }
-
-    @Override
-    public void notifyBatteryLevelChanged(double batteryLevel)
-    {
-        // TODO: only update battery when int value changes
-        vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL).setData((int)batteryLevel);
-        display.updateBatteryLevel((int)batteryLevel);
-
-        updateMilesRemaining(motor.speed());
-        if (batteryLevel <= 0.0) decelerate();    // kill power to vehicle
-    }
-
-    @Override
-    public void notifyBatteryTemperatureChanged(double temperature)
-    {
-        vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData((int)temperature);
-        display.updateBatteryTemperature((int)temperature);
+        if (started)
+        {
+            vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData(temperature);
+            vehicleDashboard.updateBatteryTemperature(temperature);
+        }
     }
 
     @Override
     public void notifySpeedChanged(int speed)
     {
-        vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(speed);
-        display.updateSpeed(speed);
+        if (started)
+        {
+            vehicleService.getCharacteristic(VehicleService.Property.SPEED).setData(speed);
+            vehicleDashboard.updateSpeed(speed);
+        }
 
-        updatePowerConsumption(speed);
-    }
-
-    @Override
-    public void notifyDistanceChanged(int distance)
-    {
-        vehicleService.getCharacteristic(VehicleService.Property.DISTANCE).setData(distance);
-        display.updateDistance(distance);
-    }
-
-    private void updatePowerConsumption(int speed)
-    {
         // accelerating
         if (motor.state() == SpeedManager.State.ACCELERATING && speed > 1)
             battery.increasePowerLevel(battery.minPowerConsumption());
     }
 
-    private void updateMilesRemaining(int speed)
+    @Override
+    public void notifyDistanceChanged(int distance)
     {
-        if (speed == 0) speed = 1;
-
-        // time in secs till 0% battery
-        double timeToEmpty = battery.timeRemaining() / 1000;
-
-        // calculate mileage
-        double milesPerSec = (double) speed / 3600;
-        int milesRemaining = (int) Math.round(milesPerSec * timeToEmpty);
-
-        //Log.d(this.getClass().getName(), "updateMilesRemaining() -> TTE: " + timeToEmpty + " @ " + speed + " MPH");
-        //Log.d(this.getClass().getName(), "updateMilesRemaining() -> MPS: " + milesPerSec);
-
-        if (milesRemaining != mileage)
+        if (started)
         {
-            vehicleService.getCharacteristic(VehicleService.Property.RANGE).setData(milesRemaining);
-            display.updateRange(milesRemaining);
-
-            mileage = milesRemaining;
+            vehicleService.getCharacteristic(VehicleService.Property.DISTANCE).setData(distance);
+            vehicleDashboard.updateDistance(distance);
         }
     }
+    // -----------------------------------------------------------------------------------------------------------------------
 }

@@ -6,54 +6,60 @@ import android.content.SharedPreferences;
 
 class BatteryManager
 {
+    private Activity      context;
+    private VehicleStatus updateStatus;
+
+    // internal data, affects battery operation
+    // ----------------------------------------
     enum State { IDLE, CHARGING, RUNNING };
-
-    private final int CONVERT_TO_MS = 60000;
-
-    // globals, not to be changed once set
-    private int    SLEEP_TIME;
-    private double CHARGING_POWER, MAX_POWER_PER_CYCLE, MIN_POWER_PER_CYCLE;
-    private int    MAX_POWER_DRAIN_SPEED_MS, MIN_POWER_DRAIN_SPEED_MS;
 
     private boolean isOn;
     private State   state;
     private double  powerLevel;
-    private double  charge;
-    private int     temperature;
+    // ----------------------------------------
 
-    private Activity      context;
-    private VehicleStatus updateStatus;
+    // data shown to user
+    private double chargeLevel;
+    private int    temperature;
 
-    BatteryManager(Activity context, VehicleStatus vehicleStatus)
+    BatteryManager(Activity context, VehicleStatus vehicleStatus, int minBatteryLifeMins, int maxBatteryLifeMins, int chargeTimeMins, int updateRateMs)
     {
-        SLEEP_TIME = 1000;
-
-        // how fast should max power drain? - 5 mins
-        MAX_POWER_DRAIN_SPEED_MS        = 5 * CONVERT_TO_MS;                        // 300000
-        double msToDrainOnePercentAtMax = (double) MAX_POWER_DRAIN_SPEED_MS / 100;  // 3000
-        MAX_POWER_PER_CYCLE             = SLEEP_TIME / msToDrainOnePercentAtMax;    // 0.333...
-
-        // how fast should min power drain? - 10 hours (600 mins)
-        MIN_POWER_DRAIN_SPEED_MS        = 600 * CONVERT_TO_MS;                      // 36000000
-        double msToDrainOnePercentAtMin = (double) MIN_POWER_DRAIN_SPEED_MS / 100;  // 360000
-        MIN_POWER_PER_CYCLE             = SLEEP_TIME / msToDrainOnePercentAtMin;    // 0.002777...
-
-        // how fast should charge? - 3 mins
-        int chargeTime    = 3 * CONVERT_TO_MS;          // 180000
-        double chargeGain = (double) chargeTime / 100;  // 1800
-        CHARGING_POWER    = SLEEP_TIME / chargeGain;    // 0.555...
-
-        isOn       = false;                 // waits for user to run battery cycles
-        state      = State.IDLE;            // battery does not consume power initially
-        powerLevel = MIN_POWER_PER_CYCLE;   // when it does start, consume min power until increased
-
-        SharedPreferences sharedPreferences = context.getSharedPreferences(context.getResources().getString(R.string.filename), Context.MODE_PRIVATE);
-
-        charge      = sharedPreferences.getInt(context.getResources().getString(R.string.battery_level_key), 100);
-        temperature = sharedPreferences.getInt(context.getResources().getString(R.string.temperature_key), 20);
-
         this.context = context;
         updateStatus = vehicleStatus;
+
+        BatteryConstants.setSleepTime(updateRateMs);
+
+        final int CONVERT_TO_MS = 60000;
+
+        // calculate max power level based on provided battery life time
+        BatteryConstants.setmaxDrainSpeedMs(minBatteryLifeMins * CONVERT_TO_MS);                   // convert mins to ms
+        double msToDrainOnePercentAtMax = (double) BatteryConstants.getmaxDrainSpeedMs() / 100;    // time in ms to drain 1%
+        BatteryConstants.setMaxPower(BatteryConstants.getSleepTime() / msToDrainOnePercentAtMax);  // how much to drain at each cycle to achieve this rate
+
+        // do the same for min power level
+        BatteryConstants.setminDrainSpeedMs(maxBatteryLifeMins * CONVERT_TO_MS);
+        double msToDrainOnePercentAtMin = (double) BatteryConstants.getminDrainSpeedMs() / 100;
+        BatteryConstants.setMinPower(BatteryConstants.getSleepTime() / msToDrainOnePercentAtMin);
+
+        // and the same for charging speed
+        int            chargeTimeMs = chargeTimeMins * CONVERT_TO_MS;
+        double msToChargeOnePercent = (double) chargeTimeMs / 100;
+        BatteryConstants.setChargingPower(BatteryConstants.getSleepTime() / msToChargeOnePercent);
+
+        // set defaults
+        // ------------------------------------------------------------------------------------------------------------------------------------------
+        isOn       = false;                            // waits for user to run battery cycles
+        powerLevel = BatteryConstants.getMinPower();
+
+        // read saved state of vehicle
+        SharedPreferences sharedPreferences = context.getSharedPreferences(context.getResources().getString(R.string.filename), Context.MODE_PRIVATE);
+        chargeLevel = sharedPreferences.getInt(context.getResources().getString(R.string.battery_level_key), 100);
+        temperature = sharedPreferences.getInt(context.getResources().getString(R.string.temperature_key), 20);
+        boolean isCharging  = sharedPreferences.getBoolean(context.getResources().getString(R.string.charging_key), false);
+
+        if (isCharging) state = State.CHARGING;
+        else            state = State.IDLE;
+        // ------------------------------------------------------------------------------------------------------------------------------------------
     }
 
     void turnOn()
@@ -62,8 +68,9 @@ class BatteryManager
         {
             isOn = true;
 
-            // send out initial charge state
-            updateStatus.notifyBatteryLevelChanged(charge);
+            // send out initial state
+            updateStatus.notifyChargingStateChanged(state == State.CHARGING);
+            updateStatus.notifyBatteryLevelChanged((int) chargeLevel);
             updateStatus.notifyBatteryTemperatureChanged(temperature);
 
             new Thread(new Runnable() { @Override public void run() { startPowerCycle(); } }).start();
@@ -77,20 +84,26 @@ class BatteryManager
             // idle will just loop with no changes
             if (state != State.IDLE)
             {
+                int chargeBefore = (int) chargeLevel;
+
                 switch (state)
                 {
                     case CHARGING:
-                        if (charge < 100) charge += CHARGING_POWER;
+                        if (chargeLevel < 100) chargeLevel += BatteryConstants.getChargingPower();
                         break;
 
                     case RUNNING:
-                        if (charge > 0) charge -= powerLevel;
+                        if (chargeLevel > 0) chargeLevel -= powerLevel;
                         break;
                 }
 
-                updateStatus.notifyBatteryLevelChanged(charge);
+                int chargeAfter = (int) chargeLevel;
 
-                try { Thread.sleep(SLEEP_TIME); }
+                // only notify when whole number changes
+                if (chargeAfter != chargeBefore)
+                    updateStatus.notifyBatteryLevelChanged(chargeAfter);
+
+                try { Thread.sleep(BatteryConstants.getSleepTime()); }
                 catch (InterruptedException e) { e.printStackTrace(); }
             }
         }
@@ -102,7 +115,7 @@ class BatteryManager
         if (state != State.IDLE)
         {
             state = State.IDLE;
-            powerLevel = MIN_POWER_PER_CYCLE;
+            powerLevel = BatteryConstants.getMinPower();
         }
     }
 
@@ -123,39 +136,38 @@ class BatteryManager
 
     void turnOff()
     {
+        // save state of battery
         SharedPreferences.Editor editor = context.getSharedPreferences(context.getResources().getString(R.string.filename), Context.MODE_PRIVATE).edit();
-        editor.putInt(context.getResources().getString(R.string.battery_level_key), (int) charge);
+        editor.putBoolean(context.getResources().getString(R.string.charging_key), state == State.CHARGING);
+        editor.putInt(context.getResources().getString(R.string.battery_level_key), (int) chargeLevel);
         editor.putInt(context.getResources().getString(R.string.temperature_key), temperature);
         editor.apply();
 
-        isOn = false;
+        // stop consuming power and stop background thread
         idle();
+        isOn = false;
     }
 
     void increasePowerLevel(double additionalPower)
     {
-        if (additionalPower > 0 && charge >  0 && state != State.CHARGING)
+        if (additionalPower > 0 && chargeLevel >  0 && state != State.CHARGING)
         {
             // now consuming power
             if (state == State.IDLE) state = State.RUNNING;
 
             // must be in range
-            if ((powerLevel + additionalPower) <= MAX_POWER_PER_CYCLE)
-            {
+            if ((powerLevel + additionalPower) <= BatteryConstants.getMaxPower())
                 powerLevel += additionalPower;
-            }
         }
     }
 
     void decreasePowerLevel(double reducedPower)
     {
-        if (reducedPower > 0 && charge >  0 && state != State.CHARGING)
+        if (reducedPower > 0 && chargeLevel >  0 && state != State.CHARGING)
         {
             // must be in range
-            if ((powerLevel - reducedPower) >= MIN_POWER_PER_CYCLE)
-            {
+            if ((powerLevel - reducedPower) >= BatteryConstants.getMinPower())
                 powerLevel -= reducedPower;
-            }
         }
     }
 
@@ -167,23 +179,23 @@ class BatteryManager
 
     boolean isOn()                    { return isOn; }
     double  currentPowerConsumption() { return powerLevel; }
-    double  minPowerConsumption()     { return MIN_POWER_PER_CYCLE; }
-    double  maxPowerConsumption()     { return MAX_POWER_PER_CYCLE; }
-    double  chargeLeft()              { return charge; }
+    double  minPowerConsumption()     { return BatteryConstants.getMinPower(); }
+    double  maxPowerConsumption()     { return BatteryConstants.getMaxPower(); }
+    double  chargeLeft()              { return chargeLevel; }
     double  temperature()             { return temperature; }
 
-    double timeRemaining()
+    double timeRemainingMs()
     {
-        double drainOnePercentMs = SLEEP_TIME / powerLevel;
-        double timeRemaining     = drainOnePercentMs * charge;
+        double drainOnePercentMs = BatteryConstants.getSleepTime() / powerLevel;
+        double timeRemaining     = drainOnePercentMs * chargeLevel;
 
         // value cannot exceed slowest drain time
-        if (timeRemaining > MIN_POWER_DRAIN_SPEED_MS)
-            timeRemaining = MIN_POWER_DRAIN_SPEED_MS;
+        if (timeRemaining > BatteryConstants.getminDrainSpeedMs())
+            timeRemaining = BatteryConstants.getminDrainSpeedMs();
 
-        // precision can be lost when converting back
-        else if (powerLevel == MAX_POWER_PER_CYCLE && timeRemaining > MAX_POWER_DRAIN_SPEED_MS)
-            timeRemaining = MAX_POWER_DRAIN_SPEED_MS;
+        // or min drain time
+        else if (powerLevel == BatteryConstants.getMaxPower() && timeRemaining > BatteryConstants.getmaxDrainSpeedMs())
+            timeRemaining = BatteryConstants.getmaxDrainSpeedMs();
 
         return timeRemaining;
     }

@@ -25,14 +25,12 @@ import java.util.UUID;
 import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
 import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTED;
 
-// manages bluetooth LE communication
-class BluetoothLE implements BluetoothNotificationResponse
+class BluetoothLE implements BluetoothPermissionsResult
 {
-    private Context context;
-
-    private BluetoothNotification sendNotification;     // sends requests for setup and notifies result
-    private BluetoothServerStatus updateStatus;         // update result of advertisement and GATT
-    private Display               display;              // send updates to interface
+    private Context               context;           // used to setup some bluetooth services
+    private BluetoothPermissions  permission;        // send requests for permissions
+    private BluetoothServerStatus GATTStatus;        // send result of advertisement and GATT
+    private VehicleDashboard      vehicleDashboard;  // send messages to interface
 
     private BluetoothManager      bluetoothManager = null;                // high level management (get devices etc.)
     private BluetoothAdapter      bluetoothAdapter = null;                // local bluetooth device
@@ -42,29 +40,23 @@ class BluetoothLE implements BluetoothNotificationResponse
 
     private boolean isAdvertising = false;
 
-    BluetoothLE(Activity activity, BluetoothServerStatus statusInterface)
+    BluetoothLE(Activity mainActivity, BluetoothPermissions permissionsInterface, VehicleDashboard dashboardInterface, BluetoothServerStatus statusInterface)
     {
-        context      = activity;
-        updateStatus = statusInterface;
-
-        // activity must handle bluetooth requests
-        if (activity instanceof BluetoothNotification) this.sendNotification = (BluetoothNotification) activity;
-        else Log.e(this.getClass().getName(), "activity is not instance of " + BluetoothNotification.class.getName());
-
-        // and handle GUI updates
-        if (activity instanceof Display) this.display = (Display) activity;
-        else Log.e(this.getClass().getName(), "activity is not instance of " + Display.class.getName());
+        context          = mainActivity;
+        permission       = permissionsInterface;
+        vehicleDashboard = dashboardInterface;
+        GATTStatus       = statusInterface;
     }
 
-    void enable()
+    void beginSetup()
     {
-        sendNotification.requestLocation();
+        permission.requestLocation();
     }
 
     @Override
     public void requestLocationResult(boolean isGranted)
     {
-        if (!isGranted) sendNotification.setupFailed("Location is required for Bluetooth Low Energy functionality.");
+        if (!isGranted) permission.setupFailed("Location is required for Bluetooth Low Energy functionality.");
         else            initialiseAdapter();
     }
 
@@ -74,15 +66,15 @@ class BluetoothLE implements BluetoothNotificationResponse
         if (bluetoothManager == null) bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         if (bluetoothAdapter == null) bluetoothAdapter = bluetoothManager.getAdapter();
 
-        if (!bluetoothAdapter.isEnabled()) sendNotification.enableAdapter();        // request bluetooth turned on
-        else                               sendNotification.setupComplete();        // already on, ready
+        if (!bluetoothAdapter.isEnabled()) permission.enableAdapter();   // request bluetooth be turned on
+        else                               permission.setupComplete();   // already on, ready
     }
 
     @Override
     public void enableAdapterResult(boolean isGranted)
     {
-        if (!isGranted) sendNotification.setupFailed("Bluetooth is required to communicate with dashboard.");
-        else            sendNotification.setupComplete();
+        if (!isGranted) permission.setupFailed("Bluetooth is required to communicate with dashboard.");
+        else            permission.setupComplete();
     }
 
     void startAdvertising(String UUID)
@@ -116,7 +108,7 @@ class BluetoothLE implements BluetoothNotificationResponse
         public void onStartSuccess(AdvertiseSettings settingsInEffect)
         {
             super.onStartSuccess(settingsInEffect);
-            updateStatus.advertiseResult(true);
+            GATTStatus.advertiseResult(true);
             isAdvertising = true;
         }
 
@@ -149,7 +141,7 @@ class BluetoothLE implements BluetoothNotificationResponse
                     break;
             }
 
-            updateStatus.advertiseResult(false);
+            GATTStatus.advertiseResult(false);
             Log.e(this.getClass().getName(), "onStartFailure() -> Advertisement failed: " + errorMsg);
         }
     };
@@ -159,13 +151,13 @@ class BluetoothLE implements BluetoothNotificationResponse
         if (bluetoothManager == null || bluetoothAdapter == null || !bluetoothAdapter.isEnabled())
         {
             Log.e(this.getClass().getName(), "startGATT() -> Could not start GATT: Bluetooth adapter not initialised.");
-            updateStatus.GATTResult(false);
+            GATTStatus.GATTResult(false);
         }
         
         else if (GATTServer != null || service != null)
         {
             Log.e(this.getClass().getName(), "startGATT() -> Could not start GATT: Already started.");
-            updateStatus.GATTResult(false);
+            GATTStatus.GATTResult(false);
         }
 
         else
@@ -197,7 +189,7 @@ class BluetoothLE implements BluetoothNotificationResponse
             }
 
             GATTServer.addService(service);
-            updateStatus.GATTResult(true);
+            GATTStatus.GATTResult(true);
         }
     }
 
@@ -213,7 +205,7 @@ class BluetoothLE implements BluetoothNotificationResponse
             if (newState == STATE_CONNECTED)
             {
                 devices.add(device);
-                display.updateDeviceCount(devices.size());
+                vehicleDashboard.updateDeviceCount(devices.size());
 
                 // send data to new device
                 for (int i = 0; i < service.getCharacteristics().size(); ++i)
@@ -224,7 +216,7 @@ class BluetoothLE implements BluetoothNotificationResponse
             else if (newState == STATE_DISCONNECTED)
             {
                 devices.remove(device);
-                display.updateDeviceCount(devices.size());
+                vehicleDashboard.updateDeviceCount(devices.size());
             }
         }
 
@@ -236,7 +228,7 @@ class BluetoothLE implements BluetoothNotificationResponse
             if (status == BluetoothGatt.GATT_SUCCESS) serviceAdded = true;
             else Log.e(this.getClass().getName(), "onServiceAdded() -> Failed to add service. Code: " + status);
 
-            updateStatus.serviceAddedResult(serviceAdded);
+            GATTStatus.serviceAddedResult(serviceAdded);
         }
 
         @Override
