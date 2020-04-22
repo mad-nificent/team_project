@@ -2,7 +2,6 @@
 <android.support.constraint.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -10,26 +9,37 @@
         android:id="@+id/notificationBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="5dp">
 
         <TableRow
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="end">
+            android:gravity="start">
+
+            <ImageView
+                android:id="@+id/signalIcon"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginStart="5dp"
+                android:layout_marginEnd="5dp"
+                android:foreground="@drawable/connection_grey" />
 
             <TextView
-                android:id="@+id/devices"
-                android:layout_width="30dp"
+                android:id="@+id/deviceCount"
+                android:layout_width="wrap_content"
                 android:layout_height="30dp"
                 android:gravity="center"
-                android:text="0"
-                android:textSize="20sp"/>
+                android:layout_marginEnd="3dp"
+                android:text="@string/device_count_placholder"
+                android:textSize="12sp"/>
 
-            <ImageButton
-                android:layout_width="30dp"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="30dp"
-                android:layout_marginEnd="10dp"
-                android:background="@drawable/connection_grey" />
+                android:gravity="center"
+                android:text="@string/devices"
+                android:textSize="12sp"/>
 
         </TableRow>
 
@@ -56,244 +66,426 @@
 
     </TableLayout>
 
-    <TableLayout
-        android:id="@+id/warnings"
-        android:layout_width="match_parent"
+    <android.support.constraint.ConstraintLayout
+        android:id="@+id/criticalInfo"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@+id/separator">
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/separator">
 
-        <TableRow
+        <TextView
+            android:id="@+id/speed"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:paddingTop="5dp">
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="5dp"
+            android:text="@string/speed_placeholder"
+            android:textSize="24sp"
+            app:layout_constraintEnd_toStartOf="@id/mph"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/mph"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/mph"
+            android:textSize="24sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="0dp"
+            android:layout_marginHorizontal="15dp"
+            android:layout_weight="1"
+            android:background="@color/line"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/speed"
+            app:layout_constraintStart_toEndOf="@id/batteryInfo"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <android.support.constraint.ConstraintLayout
+            android:id="@+id/batteryInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageView
+                android:id="@+id/batteryIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:src="@drawable/battery"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/batteryLevel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/battery_placeholder"
+                android:textSize="24sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@id/batteryIcon"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </android.support.constraint.ConstraintLayout>
+
+    </android.support.constraint.ConstraintLayout>
+
+    <android.support.constraint.ConstraintLayout
+        android:id="@+id/rangeInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/criticalInfo">
+
+        <TextView
+            android:id="@+id/range"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toStartOf="@+id/milesLeft"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginTop="5dp"
+            android:layout_marginEnd="5dp"
+            android:text="@string/range_placeholder"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/milesLeft"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="@string/miles_left"
+            android:textSize="16sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </android.support.constraint.ConstraintLayout>
+
+    <android.support.constraint.ConstraintLayout
+        android:id="@+id/mileageInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/rangeInfo">
+
+        <TextView
+            android:id="@+id/distance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toStartOf="@+id/milesTravelled"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginTop="5dp"
+            android:layout_marginEnd="5dp"
+            android:text="@string/distance_placeholder"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/milesTravelled"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="@string/miles_travelled"
+            android:textSize="16sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </android.support.constraint.ConstraintLayout>
+
+    <TableLayout
+        android:id="@+id/separator2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="6dp"
+        app:layout_constraintTop_toBottomOf="@id/mileageInfo">
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="@color/line" />
+
+        </TableRow>
+
+    </TableLayout>
+
+    <TableLayout
+        android:id="@+id/tableLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/separator2">
+
+        <TableRow
+            android:layout_marginBottom="10dp"
+            android:gravity="center">
 
             <ImageButton
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginHorizontal="2dp"
-                android:background="@drawable/master_warning_grey" />
+                android:id="@+id/seatbelt"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="20dp"
+                android:background="@drawable/seatbelt_warning_black" />
 
             <ImageButton
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginHorizontal="2dp"
-                android:background="@drawable/seatbelt_warning_grey" />
+                android:id="@+id/lightWarning"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="20dp"
+                android:background="@drawable/no_lightbeam_black" />
 
             <ImageButton
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginHorizontal="2dp"
-                android:background="@drawable/no_lightbeam_grey" />
+                android:id="@+id/lowTyrePressure"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="20dp"
+                android:background="@drawable/low_tire_pressure_black" />
 
             <ImageButton
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginHorizontal="2dp"
-                android:background="@drawable/low_tire_pressure_grey" />
+                android:id="@+id/lowWiperFluid"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="20dp"
+                android:background="@drawable/low_wiper_fluid_black" />
+
+        </TableRow>
+
+        <TableRow android:gravity="center">
 
             <ImageButton
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginHorizontal="2dp"
-                android:background="@drawable/low_wiper_fluid_grey" />
+                android:id="@+id/airbag"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="20dp"
+                android:background="@drawable/airbag_fault_black" />
 
             <ImageButton
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginHorizontal="2dp"
-                android:background="@drawable/airbag_fault_grey" />
+                android:id="@+id/brakeWarning"
+                android:layout_width="40dp"
+                android:layout_height="35dp"
+                android:layout_marginHorizontal="20dp"
+                android:background="@drawable/brake_warning_black" />
 
             <ImageButton
-                android:layout_width="30dp"
-                android:layout_height="25dp"
-                android:layout_marginHorizontal="2dp"
-                android:background="@drawable/brake_warning_grey" />
+                android:id="@+id/absWarning"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="20dp"
+                android:background="@drawable/abs_fault_black" />
 
             <ImageButton
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginHorizontal="2dp"
-                android:background="@drawable/abs_fault_grey" />
+                android:id="@+id/evWarning"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="20dp"
+                android:background="@drawable/electric_drive_system_fault_black" />
 
-            <ImageButton
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_marginHorizontal="2dp"
-                android:background="@drawable/electric_drive_system_fault_grey" />
+        </TableRow>
+
+    </TableLayout>
+
+    <TableLayout
+        android:id="@+id/separator3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="6dp"
+        app:layout_constraintTop_toBottomOf="@+id/tableLayout">
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="@color/line" />
 
         </TableRow>
 
     </TableLayout>
 
     <android.support.constraint.ConstraintLayout
+        android:id="@+id/temperatureInfo"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@+id/warnings"
-        android:padding="10dp">
+        android:layout_height="30dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/separator3"
+        android:layout_marginHorizontal="10dp">
+
+        <ImageView
+            android:id="@+id/temperatureIcon"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:background="@drawable/temp_grey" />
 
         <SeekBar
             android:id="@+id/temperatureBar"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:max="50"
-            android:min="-10"
-            android:progress="20"
-            app:layout_constraintBottom_toBottomOf="@+id/temperature"
+            android:min="-20"
+            android:progress="15"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/temperature"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/temperature" />
+            app:layout_constraintStart_toEndOf="@id/temperatureIcon"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
             android:id="@+id/temperature"
-            android:layout_width="wrap_content"
+            android:layout_width="30dp"
             android:layout_height="wrap_content"
-            app:layout_constraintBottom_toTopOf="@+id/battery"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginBottom="10dp"
-            android:text="20C"
-            android:textSize="20sp"/>
-
-        <TextView
-            android:id="@+id/battery"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="100%"
-            android:layout_marginBottom="10dp"
-            android:textSize="32sp"
-            app:layout_constraintBottom_toTopOf="@+id/range"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
-
-        <TextView
-            android:id="@+id/range"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="100 Miles Left"
-            android:layout_marginBottom="10dp"
-            android:textSize="32sp"
-            app:layout_constraintBottom_toTopOf="@+id/distance"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
-
-        <TextView
-            android:id="@+id/distance"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="1000 Miles Travelled"
-            android:layout_marginBottom="10dp"
-            android:textSize="32sp"
-            app:layout_constraintBottom_toTopOf="@+id/speed"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
-
-        <TextView
-            android:id="@+id/speed"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toStartOf="@id/degrees"
+            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
+            android:text="@string/temperature_placeholder"
+            android:textAlignment="textEnd"
+            android:textSize="16sp"/>
+
+        <TextView
+            android:id="@+id/degrees"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            android:text="120MPH"
-            android:textSize="32sp"/>
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:text="@string/degrees"
+            android:textAlignment="center"
+            android:textSize="16sp"/>
 
     </android.support.constraint.ConstraintLayout>
 
     <android.support.constraint.ConstraintLayout
-        android:id="@+id/constraintLayout3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:id="@+id/wheel"
+        android:layout_width="224dp"
+        android:layout_height="225dp"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        app:layout_constraintTop_toBottomOf="@+id/temperatureInfo"
+        app:layout_constraintBottom_toTopOf="@+id/pedals"
+        android:background="@drawable/wheel">
+
+        <ImageButton
+            android:id="@+id/parkingBrake"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginTop="30dp"
+            android:layout_marginEnd="3dp"
+            android:background="@drawable/parking_brake_black" />
+
+        <ImageButton
+            android:id="@+id/lights"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/parkingBrake"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/indicators"
+            android:layout_marginStart="35dp"
+            android:background="@drawable/no_lightbeam_black" />
+
+        <ImageButton
+            android:id="@+id/charge"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            app:layout_constraintStart_toEndOf="@+id/parkingBrake"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/indicators"
+            android:layout_marginEnd="30dp"
+            android:background="@drawable/charging_icon_black" />
+
+        <ImageView
+            android:id="@+id/masterWarning"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            app:layout_constraintStart_toStartOf="@+id/lights"
+            app:layout_constraintEnd_toEndOf="@+id/charge"
+            app:layout_constraintTop_toBottomOf="@id/parkingBrake"
+            app:layout_constraintBottom_toTopOf="@+id/indicators"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/master_warning_grey" />
 
         <android.support.constraint.ConstraintLayout
-            android:id="@+id/wheel"
-            android:layout_width="200dp"
-            android:layout_height="200dp"
-            android:layout_marginStart="10dp"
-            android:background="@drawable/wheel"
+            android:id="@+id/indicators"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="@id/lights"
+            app:layout_constraintEnd_toEndOf="@id/charge"
+            app:layout_constraintTop_toBottomOf="@+id/masterWarning"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
+            android:layout_marginBottom="30dp">
 
             <ImageButton
+                android:id="@+id/leftIndicator"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:layout_marginStart="10dp"
-                android:layout_marginBottom="5dp"
-                android:background="@drawable/left_indicator_grey"
-                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toTopOf="parent"
+                android:background="@drawable/left_indicator_black" />
 
             <ImageButton
+                android:id="@+id/rightIndicator"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:layout_marginEnd="10dp"
-                android:layout_marginBottom="5dp"
-                android:background="@drawable/right_indicator_grey"
-                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <ImageButton
-                android:id="@+id/imageButton4"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/right_indicator_grey" />
-
-            <ImageButton
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginBottom="5dp"
-                android:background="@drawable/no_lightbeam_grey"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <ImageButton
-                android:id="@+id/imageButton3"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/parking_brake_grey" />
-
-            <ImageButton
-                android:id="@+id/charge"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/charging_icon_grey" />
+                app:layout_constraintTop_toTopOf="parent"
+                android:background="@drawable/right_indicator_black" />
 
         </android.support.constraint.ConstraintLayout>
 
-        <android.support.constraint.ConstraintLayout
-            android:id="@+id/constraintLayout"
+    </android.support.constraint.ConstraintLayout>
+
+    <android.support.constraint.ConstraintLayout
+        android:id="@+id/pedals"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginBottom="10dp">
+
+        <ImageButton
+            android:id="@+id/brake"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="10dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/throttle"
             app:layout_constraintBottom_toBottomOf="parent"
+            android:background="@android:color/transparent"
+            android:src="@drawable/brake"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/throttle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/wheel">
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:background="@android:color/transparent"
+            android:src="@drawable/throttle"
+            android:scaleType="centerInside" />
 
-            <ImageButton
-                android:id="@+id/btnBrake"
-                android:layout_width="50dp"
-                android:layout_height="60dp"
-                android:layout_marginEnd="10dp"
-                android:background="@drawable/brake"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/btnThrottle"
-                app:layout_constraintStart_toStartOf="parent" />
-
-            <ImageButton
-                android:id="@+id/btnThrottle"
-                android:layout_width="50dp"
-                android:layout_height="100dp"
-                android:background="@drawable/throttle"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
-
-        </android.support.constraint.ConstraintLayout>
     </android.support.constraint.ConstraintLayout>
 
 </android.support.constraint.ConstraintLayout>

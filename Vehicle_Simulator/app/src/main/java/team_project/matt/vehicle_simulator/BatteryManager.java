@@ -1,6 +1,8 @@
 package team_project.matt.vehicle_simulator;
 
-import android.util.Log;
+import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
 
 class BatteryManager
 {
@@ -16,13 +18,13 @@ class BatteryManager
     private boolean isOn;
     private State   state;
     private double  powerLevel;
+    private double  charge;
+    private int     temperature;
 
-    private double charge;
-    private double temperature;
-
+    private Activity      context;
     private VehicleStatus updateStatus;
 
-    BatteryManager(VehicleStatus vehicleStatus)
+    BatteryManager(Activity context, VehicleStatus vehicleStatus)
     {
         SLEEP_TIME = 1000;
 
@@ -45,9 +47,12 @@ class BatteryManager
         state      = State.IDLE;            // battery does not consume power initially
         powerLevel = MIN_POWER_PER_CYCLE;   // when it does start, consume min power until increased
 
-        charge      = 10; // TODO: read charge from shared prefs, ALSO check if charging, if so toggle that on and update charge state on turn on
-        temperature = 20;
+        SharedPreferences sharedPreferences = context.getSharedPreferences(context.getResources().getString(R.string.filename), Context.MODE_PRIVATE);
 
+        charge      = sharedPreferences.getInt(context.getResources().getString(R.string.battery_level_key), 100);
+        temperature = sharedPreferences.getInt(context.getResources().getString(R.string.temperature_key), 20);
+
+        this.context = context;
         updateStatus = vehicleStatus;
     }
 
@@ -118,6 +123,11 @@ class BatteryManager
 
     void turnOff()
     {
+        SharedPreferences.Editor editor = context.getSharedPreferences(context.getResources().getString(R.string.filename), Context.MODE_PRIVATE).edit();
+        editor.putInt(context.getResources().getString(R.string.battery_level_key), (int) charge);
+        editor.putInt(context.getResources().getString(R.string.temperature_key), temperature);
+        editor.apply();
+
         isOn = false;
         idle();
     }
@@ -133,7 +143,6 @@ class BatteryManager
             if ((powerLevel + additionalPower) <= MAX_POWER_PER_CYCLE)
             {
                 powerLevel += additionalPower;
-                //Log.d(this.getClass().getName(), "increasePowerLevel() -> Adding: " + additionalPower + ", New Total: " + powerLevel);
             }
         }
     }
@@ -146,12 +155,11 @@ class BatteryManager
             if ((powerLevel - reducedPower) >= MIN_POWER_PER_CYCLE)
             {
                 powerLevel -= reducedPower;
-                Log.d(this.getClass().getName(), "decreasePowerLevel() -> Reducing: " + reducedPower + ", New Total: " + powerLevel);
             }
         }
     }
 
-    void setTemperature(double newTemperature)
+    void setTemperature(int newTemperature)
     {
         temperature = newTemperature;
         updateStatus.notifyBatteryTemperatureChanged(temperature);

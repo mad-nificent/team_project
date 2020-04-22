@@ -24,7 +24,18 @@
                                             <option name="values">
                                               <map>
                                                 <entry key="color" value="000000" />
-                                                <entry key="opacityPercent" value="80" />
+                                                <entry key="opacityPercent" value="60" />
+                                              </map>
+                                            </option>
+                                          </PersistentState>
+                                        </value>
+                                      </entry>
+                                      <entry key="clipartAsset">
+                                        <value>
+                                          <PersistentState>
+                                            <option name="values">
+                                              <map>
+                                                <entry key="url" value="jar:file:/C:/Program%20Files/Android/Android%20Studio/plugins/android/lib/android.jar!/images/material_design_icons/device/ic_battery_std_black_24dp.xml" />
                                               </map>
                                             </option>
                                           </PersistentState>
@@ -46,8 +57,8 @@
                                   </option>
                                   <option name="values">
                                     <map>
-                                      <entry key="assetType" value="IMAGE" />
                                       <entry key="imageAsset" value="D:\Downloads\drive-download-20200418T184323Z-001\abs_fault_grey.png" />
+                                      <entry key="outputName" value="battery" />
                                       <entry key="themeColor" value="ffffff" />
                                     </map>
                                   </option>

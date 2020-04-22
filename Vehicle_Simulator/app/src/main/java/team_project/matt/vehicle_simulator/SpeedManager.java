@@ -85,8 +85,12 @@ class SpeedManager
 
         // convert mph to mpms, account for number of ms slept
         double mps = (double)speed / CONVERT_TO_MPS;
+
+        int distanceBefore = (int) distance;
         distance += mps * sleepTime;
-        updateStatus.notifyDistanceChanged((int)distance);
+        int distanceAfter  = (int) distance;
+
+        if (distanceBefore < distanceAfter) updateStatus.notifyDistanceChanged(distanceAfter);
 
         try { Thread.sleep(sleepTime); }
         catch (InterruptedException e) { e.printStackTrace(); }
@@ -102,8 +106,12 @@ class SpeedManager
 
         // convert mph to mpms, account for number of ms slept
         double mps = (double)speed / CONVERT_TO_MPS;
+
+        int distanceBefore = (int) distance;
         distance += mps * sleepTime;
-        updateStatus.notifyDistanceChanged((int)distance);
+        int distanceAfter  = (int) distance;
+
+        if (distanceBefore < distanceAfter) updateStatus.notifyDistanceChanged(distanceAfter);
 
         try { Thread.sleep(sleepTime); }
         catch (InterruptedException e) { e.printStackTrace(); }

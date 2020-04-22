@@ -17,7 +17,6 @@ import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
 import android.os.ParcelUuid;
 import android.util.Log;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -214,8 +213,6 @@ class BluetoothLE implements BluetoothNotificationResponse
             if (newState == STATE_CONNECTED)
             {
                 devices.add(device);
-
-                display.showToast("A new device has connected.", Toast.LENGTH_SHORT);
                 display.updateDeviceCount(devices.size());
 
                 // send data to new device
@@ -227,8 +224,6 @@ class BluetoothLE implements BluetoothNotificationResponse
             else if (newState == STATE_DISCONNECTED)
             {
                 devices.remove(device);
-
-                display.showToast("A device has disconnected.", Toast.LENGTH_SHORT);
                 display.updateDeviceCount(devices.size());
             }
         }

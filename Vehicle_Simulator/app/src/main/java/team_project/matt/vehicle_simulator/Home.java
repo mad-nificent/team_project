@@ -3,7 +3,6 @@ package team_project.matt.vehicle_simulator;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
-import android.graphics.drawable.Drawable;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -12,17 +11,17 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.Locale;
 
-public class Home extends AppCompatActivity
-        implements Display, BluetoothNotification, ActivityCompat.OnRequestPermissionsResultCallback
+public class Home extends AppCompatActivity implements Display, BluetoothNotification, ActivityCompat.OnRequestPermissionsResultCallback
 {
     final int          REQUEST_CODE_LOCATION = 1;
     final int REQUEST_CODE_BLUETOOTH_ENABLED = 2;
@@ -33,8 +32,13 @@ public class Home extends AppCompatActivity
     // manages interface between user and the service, such as managing speed, battery etc.
     VehicleManager vehicle;
 
-    ImageButton btnCharge, btnAccelerate, btnBrake;
-    SeekBar temperature;
+    // warnings
+    ImageButton btnSeatbelt, btnLightsFault, btnTyrePressure, btnWiperFluid, btnAirbag, btnBrakeFault, btnABS, btnEV;
+    ImageView temperatureIcon;
+    SeekBar   temperature;
+
+    // controls
+    ImageButton btnLights, btnParkingBrake, btnCharge, btnLeftIndicator, btnRightIndicator, btnAccelerate, btnBrake;
 
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -51,7 +55,7 @@ public class Home extends AppCompatActivity
         respond = bluetoothDevice;
 
         // create interface to vehicle
-        vehicle = new VehicleManager(vehicleService, this);
+        vehicle = new VehicleManager(this, vehicleService, this);
 
         // initiate setup of ble (requests permissions, enable bluetooth device etc.)
         // this runs asynchronously, and results are received through interface
@@ -125,13 +129,33 @@ public class Home extends AppCompatActivity
     @Override
     public void showToast(final String message, final int length)
     {
-        Toast.makeText(this, message, length).show();
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                Toast.makeText(Home.this, message, length).show();
+            }
+        });
     }
 
     @Override
-    public void updateDeviceCount(int noDevices)
+    public void updateDeviceCount(final int noDevices)
     {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageView signal = findViewById(R.id.signalIcon);
 
+                if (noDevices > 0) signal.setForeground(getDrawable(R.drawable.connection_green));
+                else               signal.setForeground(getDrawable(R.drawable.connection_grey));
+
+                TextView txtDeviceCount = findViewById(R.id.deviceCount);
+                txtDeviceCount.setText(String.format(Locale.getDefault(), "%d", noDevices));
+            }
+        });
     }
 
     // this method is called by the vehicle service once it has launched GATT
@@ -147,50 +171,111 @@ public class Home extends AppCompatActivity
     {
         setContentView(R.layout.activity_home_vehicle_interface);
 
-        btnCharge = findViewById(R.id.charge);
-        btnCharge.setOnTouchListener(new View.OnTouchListener()
+        btnSeatbelt = findViewById(R.id.seatbelt);
+        btnSeatbelt.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
             public boolean onTouch(View v, MotionEvent event)
             {
                 if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
-                    vehicle.toggleCharging();
+                    vehicle.toggleSeatbelt();
 
                 return true;
             }
         });
 
-        btnAccelerate = findViewById(R.id.btnThrottle);
-        btnAccelerate.setOnTouchListener(new View.OnTouchListener()
+        btnLightsFault = findViewById(R.id.lightWarning);
+        btnLightsFault.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
             public boolean onTouch(View v, MotionEvent event)
             {
                 if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
-                    vehicle.accelerate();
-
-                else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_POINTER_UP)
-                    vehicle.decelerate();
+                    vehicle.toggleLightsFault();
 
                 return true;
             }
         });
 
-        btnBrake = findViewById(R.id.btnBrake);
-        btnBrake.setOnTouchListener(new View.OnTouchListener()
+        btnTyrePressure = findViewById(R.id.lowTyrePressure);
+        btnTyrePressure.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
             public boolean onTouch(View v, MotionEvent event)
             {
                 if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
-                    vehicle.brake();
-
-                else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_POINTER_UP)
-                    vehicle.decelerate();
+                    vehicle.toggleTyrePressure();
 
                 return true;
             }
         });
+
+        btnWiperFluid = findViewById(R.id.lowWiperFluid);
+        btnWiperFluid.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleWiperFluid();
+
+                return true;
+            }
+        });
+
+        btnAirbag = findViewById(R.id.airbag);
+        btnAirbag.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleAirbag();
+
+                return true;
+            }
+        });
+
+        btnBrakeFault = findViewById(R.id.brakeWarning);
+        btnBrakeFault.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleBrakeFault();
+
+                return true;
+            }
+        });
+
+        btnABS = findViewById(R.id.absWarning);
+        btnABS.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleABS();
+
+                return true;
+            }
+        });
+
+        btnEV = findViewById(R.id.evWarning);
+        btnEV.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleEV();
+
+                return true;
+            }
+        });
+
+        temperatureIcon = findViewById(R.id.temperatureIcon);
 
         temperature = findViewById(R.id.temperatureBar);
         temperature.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
@@ -207,27 +292,113 @@ public class Home extends AppCompatActivity
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
-    }
 
-    void enableControls(boolean enabled)
-    {
-        btnAccelerate.setEnabled(enabled);
-        btnBrake.setEnabled(enabled);
-        temperature.setEnabled(enabled);
-    }
-
-    @Override
-    public void updateChargeMode(final boolean isCharging)
-    {
-        runOnUiThread(new Runnable()
+        btnLights = findViewById(R.id.lights);
+        btnLights.setOnTouchListener(new View.OnTouchListener()
         {
             @Override
-            public void run()
+            public boolean onTouch(View v, MotionEvent event)
             {
-                enableControls(!isCharging);
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleLights();
 
-                if (isCharging) btnCharge.setBackground(getDrawable(R.drawable.charging_icon_green));
-                else            btnCharge.setBackground(getDrawable(R.drawable.charging_icon_grey));
+                return true;
+            }
+        });
+
+        btnCharge = findViewById(R.id.charge);
+        btnCharge.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleCharging();
+
+                return true;
+            }
+        });
+
+        btnParkingBrake = findViewById(R.id.parkingBrake);
+        btnParkingBrake.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleParkingBrake();
+
+                return true;
+            }
+        });
+
+        btnLeftIndicator = findViewById(R.id.leftIndicator);
+        btnLeftIndicator.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleLeftIndicator();
+
+                return true;
+            }
+        });
+
+        btnRightIndicator = findViewById(R.id.rightIndicator);
+        btnRightIndicator.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                    vehicle.toggleRightIndicator();
+
+                return true;
+            }
+        });
+
+        btnBrake = findViewById(R.id.brake);
+        btnBrake.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                {
+                    btnBrake.setForeground(getDrawable(R.drawable.brake_active));
+                    vehicle.brake();
+                }
+
+                else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_POINTER_UP)
+                {
+                    btnBrake.setForeground(getDrawable(R.drawable.brake));
+                    vehicle.decelerate();
+                }
+
+                return true;
+            }
+        });
+
+        btnAccelerate = findViewById(R.id.throttle);
+        btnAccelerate.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                {
+                    btnAccelerate.setForeground(getDrawable(R.drawable.throttle_active));
+                    vehicle.accelerate();
+                }
+
+                else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_POINTER_UP)
+                {
+                    btnAccelerate.setForeground(getDrawable(R.drawable.throttle));
+                    vehicle.decelerate();
+                }
+
+                return true;
             }
         });
     }
@@ -240,36 +411,10 @@ public class Home extends AppCompatActivity
             @Override
             public void run()
             {
-                TextView txtBattery = findViewById(R.id.battery);
-                txtBattery.setText(String.format(Locale.getDefault(), "%d", charge) + "%");
-            }
-        });
-    }
+                String text = String.format(Locale.getDefault(), "%d", charge) + "%";
 
-    @Override
-    public void updateBatteryTemperature(final int temperature)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                TextView txtTemperature = findViewById(R.id.temperature);
-                txtTemperature.setText(String.format(Locale.getDefault(), "%d", temperature) + "°C");
-            }
-        });
-    }
-
-    @Override
-    public void updateRange(final int milesLeft)
-    {
-        runOnUiThread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                TextView txtRange = findViewById(R.id.range);
-                txtRange.setText(String.format(Locale.getDefault(), "%d", milesLeft) + " miles left");
+                TextView txtBattery = findViewById(R.id.batteryLevel);
+                txtBattery.setText(text);
             }
         });
     }
@@ -283,10 +428,40 @@ public class Home extends AppCompatActivity
             public void run()
             {
                 TextView txtSpeed = findViewById(R.id.speed);
-                txtSpeed.setText(String.format(Locale.getDefault(), "%d", speed) + " MPH");
+                txtSpeed.setText(String.format(Locale.getDefault(), "%d", speed));
 
-                if (speed > 0) btnCharge.setEnabled(false);
-                else           btnCharge.setEnabled(true);
+                if (speed > 0)
+                {
+                    btnCharge.setBackground(getDrawable(R.drawable.charging_icon_grey));
+                    btnCharge.setEnabled(false);
+
+                    btnParkingBrake.setBackground(getDrawable(R.drawable.parking_brake_grey));
+                    btnParkingBrake.setEnabled(false);
+
+                }
+
+                else
+                {
+                    btnCharge.setBackground(getDrawable(R.drawable.charging_icon_black));
+                    btnCharge.setEnabled(true);
+
+                    btnParkingBrake.setBackground(getDrawable(R.drawable.parking_brake_black));
+                    btnParkingBrake.setEnabled(true);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void updateRange(final int milesLeft)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                TextView txtRange = findViewById(R.id.range);
+                txtRange.setText(String.format(Locale.getDefault(), "%d", milesLeft));
             }
         });
     }
@@ -300,240 +475,291 @@ public class Home extends AppCompatActivity
             public void run()
             {
                 TextView txtDistance = findViewById(R.id.distance);
-                txtDistance.setText(String.format(Locale.getDefault(), "%d", distance) + " miles travelled");
+                txtDistance.setText(String.format(Locale.getDefault(), "%d", distance));
             }
         });
     }
 
-    public void onMinusClick(View view)
+    @Override
+    public void toggleWarning(final int state)
     {
-//        EditText txtView = null;
-//        VehicleService.Characteristic characteristic = null;
-//
-//        int ID = view.getId();
-//        switch (ID)
-//        {
-//            case R.id.btnDecreaseBattery:
-//            {
-//                txtView = findViewById(R.id.txtBattery);
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL);
-//                break;
-//            }
-//
-//            case R.id.btnDecreaseRange:
-//            {
-//                txtView = findViewById(R.id.txtRange);
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.RANGE);
-//                break;
-//            }
-//
-//            case R.id.btnDecreaseTemp:
-//            {
-//                txtView = findViewById(R.id.txtTemp);
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP);
-//                break;
-//            }
-//
-//            case R.id.btnDecreaseDistance:
-//            {
-//                txtView = findViewById(R.id.txtDistance);
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.DISTANCE);
-//                break;
-//            }
-//        }
-//
-//        if (characteristic != null && txtView != null)
-//        {
-//            int data = characteristic.getData();
-//            if (data > 0)
-//            {
-//                data -= 1;
-//
-//                // update text view and characteristic
-//                txtView.setText(String.format(Locale.getDefault(), "%d", data));
-//                characteristic.setData(data);
-//            }
-//        }
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageView warning = findViewById(R.id.masterWarning);
+
+                if (state == vehicle.STATE_OFF) warning.setBackground(getDrawable(R.drawable.master_warning_grey));
+                else                            warning.setBackground(getDrawable(R.drawable.master_warning_red));
+            }
+        });
     }
 
-    public void onPlusClick(View view)
+    @Override
+    public void toggleSeatbelt(final int state)
     {
-//        EditText txtView = null;
-//        VehicleService.Characteristic characteristic = null;
-//        int max = 0;
-//
-//        int ID = view.getId();
-//        switch (ID)
-//        {
-//            case R.id.btnIncreaseBattery:
-//            {
-//                txtView = findViewById(R.id.txtBattery);
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_LVL);
-//                max = 100;
-//                break;
-//            }
-//
-//            case R.id.btnIncreaseRange:
-//            {
-//                txtView = findViewById(R.id.txtRange);
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.RANGE);
-//                max = 500;
-//                break;
-//            }
-//
-//            case R.id.btnIncreaseTemp:
-//            {
-//                txtView = findViewById(R.id.txtTemp);
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.BATTERY_TEMP);
-//                max = 100;
-//                break;
-//            }
-//
-//            case R.id.btnIncreaseDistance:
-//            {
-//                txtView = findViewById(R.id.txtDistance);
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.DISTANCE);
-//                max = Integer.MAX_VALUE;
-//                break;
-//            }
-//        }
-//
-//        if (characteristic != null && txtView != null)
-//        {
-//            int data = characteristic.getData();
-//            if (data < max)
-//            {
-//                data += 1;
-//
-//                // update text view and characteristic
-//                txtView.setText(String.format(Locale.getDefault(), "%d", data));
-//                characteristic.setData(data);
-//            }
-//        }
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton seatbelt = findViewById(R.id.seatbelt);
+
+                if (state == vehicle.STATE_OFF) seatbelt.setBackground(getDrawable(R.drawable.seatbelt_warning_black));
+                else                            seatbelt.setBackground(getDrawable(R.drawable.seatbelt_warning_red));
+            }
+        });
     }
 
-    // turn on left indicator
-    public void onLeftClick(View view)
+    @Override
+    public void toggleLights(final int state)
     {
-//        VehicleService.Characteristic turnSignal = vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL);
-//
-//        // toggle off
-//        if (turnSignal.getData() == vehicleService.STATE_SIGNAL_LEFT) turnSignal.setData(vehicleService.STATE_OFF);
-//
-//        // toggle on
-//        else turnSignal.setData(vehicleService.STATE_SIGNAL_LEFT);
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                if (state == vehicle.STATE_OFF)
+                {
+                    btnLights.setBackground(getDrawable(R.drawable.no_lightbeam_black));
+                    btnLightsFault.setBackground(getDrawable(R.drawable.no_lightbeam_black));
+                }
+
+                else if (state == vehicle.STATE_LIGHTS_ERR)
+                {
+                    btnLights.setBackground(getDrawable(R.drawable.no_lightbeam_black));
+                    btnLightsFault.setBackground(getDrawable(R.drawable.lights_fault_red));
+                }
+
+                else
+                {
+                    btnLightsFault.setBackground(getDrawable(R.drawable.no_lightbeam_black));
+
+                    if (state == vehicle.STATE_LIGHTS_LOW) btnLights.setBackground(getDrawable(R.drawable.med_lightbeam_green));
+                    else                                   btnLights.setBackground(getDrawable(R.drawable.high_lightbeam_blue));
+                }
+            }
+        });
     }
 
-    public void onLightsClick(View view)
+    @Override
+    public void toggleTyrePressure(final int state)
     {
-//        VehicleService.Characteristic lights = vehicleService.getCharacteristic(VehicleService.Property.LIGHTS);
-//
-//        if      (lights.getData() == vehicleService.STATE_OFF)        lights.setData(vehicleService.STATE_LIGHTS_LOW);
-//        else if (lights.getData() == vehicleService.STATE_LIGHTS_LOW) lights.setData(vehicleService.STATE_LIGHTS_HIGH);
-//        else                                                          lights.setData(vehicleService.STATE_OFF);
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton tyrePressure = findViewById(R.id.lowTyrePressure);
+
+                if (state == vehicle.STATE_OFF) tyrePressure.setBackground(getDrawable(R.drawable.low_tire_pressure_black));
+                else                            tyrePressure.setBackground(getDrawable(R.drawable.low_tire_pressure_red));
+            }
+        });
     }
 
-    public void onBrakeClick(View view)
+    @Override
+    public void toggleWiperFluid(final int state)
     {
-//        VehicleService.Characteristic brake = vehicleService.getCharacteristic(VehicleService.Property.HANDBRAKE);
-//        if (brake.getData() == vehicleService.STATE_OFF) brake.setData(vehicleService.STATE_ON);
-//        else                                             brake.setData(vehicleService.STATE_OFF);
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton wiperFluid = findViewById(R.id.lowWiperFluid);
+
+                if (state == vehicle.STATE_OFF) wiperFluid.setBackground(getDrawable(R.drawable.low_wiper_fluid_black));
+                else                            wiperFluid.setBackground(getDrawable(R.drawable.low_wiper_fluid_red));
+            }
+        });
     }
 
-    // turn on right indicator
-    public void onRightClick(View view)
+    @Override
+    public void toggleAirbag(final int state)
     {
-//        VehicleService.Characteristic turnSignal = vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL);
-//
-//        // toggle off
-//        if (turnSignal.getData() == vehicleService.STATE_SIGNAL_RIGHT)
-//            turnSignal.setData(vehicleService.STATE_OFF);
-//
-//        // toggle on
-//        else turnSignal.setData(vehicleService.STATE_SIGNAL_RIGHT);
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton airbag = findViewById(R.id.airbag);
+
+                if (state == vehicle.STATE_OFF) airbag.setBackground(getDrawable(R.drawable.airbag_fault_black));
+                else                            airbag.setBackground(getDrawable(R.drawable.airbag_fault_red));
+            }
+        });
     }
 
-    public void onWarningClick(View view)
+    @Override
+    public void toggleBrakeFault(final int state)
     {
-//        VehicleService.Characteristic characteristic = null;
-//        boolean isMultiState = false;
-//
-//        int ID = view.getId();
-//        switch (ID)
-//        {
-//            case R.id.btnSeatbeltWarning:
-//            {
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.SEATBELT);
-//                break;
-//            }
-//
-//            case R.id.btnLightsWarning:
-//            {
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.LIGHTS);
-//
-//                if (characteristic.getData() == vehicleService.STATE_OFF)
-//                    characteristic.setData(vehicleService.STATE_LIGHTS_ERR);
-//
-//                else if (characteristic.getData() == vehicleService.STATE_LIGHTS_ERR)
-//                    characteristic.setData(vehicleService.STATE_OFF);
-//
-//                return;
-//            }
-//
-//            case R.id.btnWiperWarning:
-//            {
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.WIPER_LOW);
-//                break;
-//            }
-//
-//            case R.id.btnTyresWarning:
-//            {
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW);
-//                break;
-//            }
-//
-//            case R.id.btnAirbagWarning:
-//            {
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.AIRBAG_ERR);
-//                break;
-//            }
-//
-//            case R.id.btnBrakeWarning:
-//            {
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.BRAKE_ERR);
-//                isMultiState = true;
-//                break;
-//            }
-//
-//            case R.id.btnAbsWarning:
-//            {
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.ABS_ERR);
-//                isMultiState = true;
-//                break;
-//            }
-//
-//            case R.id.btnEngineWarning:
-//            {
-//                characteristic = vehicleService.getCharacteristic(VehicleService.Property.ENGIN_ERR);
-//                isMultiState = true;
-//                break;
-//            }
-//        }
-//
-//        if (characteristic != null)
-//        {
-//            if (characteristic.getData() == vehicleService.STATE_OFF)
-//                characteristic.setData(vehicleService.STATE_WARNING_LOW);
-//
-//            else if (characteristic.getData() == vehicleService.STATE_WARNING_LOW)
-//            {
-//                if (isMultiState) characteristic.setData(vehicleService.STATE_WARNING_HIGH);
-//                else              characteristic.setData(vehicleService.STATE_OFF);
-//            }
-//
-//            else if (characteristic.getData() == vehicleService.STATE_WARNING_HIGH)
-//                characteristic.setData(vehicleService.STATE_OFF);
-//        }
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton brakeFault = findViewById(R.id.brakeWarning);
+
+                if      (state == vehicle.STATE_OFF)         brakeFault.setBackground(getDrawable(R.drawable.brake_warning_black));
+                else if (state == vehicle.STATE_WARNING_LOW) brakeFault.setBackground(getDrawable(R.drawable.brake_warning_orange));
+                else                                         brakeFault.setBackground(getDrawable(R.drawable.brake_warning_red));
+            }
+        });
+    }
+
+    @Override
+    public void toggleABSFault(final int state)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton ABSFault = findViewById(R.id.absWarning);
+
+                if      (state == vehicle.STATE_OFF)         ABSFault.setBackground(getDrawable(R.drawable.abs_fault_black));
+                else if (state == vehicle.STATE_WARNING_LOW) ABSFault.setBackground(getDrawable(R.drawable.abs_fault_orange));
+                else                                         ABSFault.setBackground(getDrawable(R.drawable.abs_fault_red));
+            }
+        });
+    }
+
+    @Override
+    public void toggleEVFault(final int state)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton EVFault = findViewById(R.id.evWarning);
+
+                if      (state == vehicle.STATE_OFF)         EVFault.setBackground(getDrawable(R.drawable.electric_drive_system_fault_black));
+                else if (state == vehicle.STATE_WARNING_LOW) EVFault.setBackground(getDrawable(R.drawable.electric_drive_system_fault_orange));
+                else                                         EVFault.setBackground(getDrawable(R.drawable.electric_drive_system_fault_red));
+            }
+        });
+    }
+
+    @Override
+    public void updateBatteryTemperature(final int temperature)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                if      (temperature > 20) temperatureIcon.setBackground(getDrawable(R.drawable.temp_red));
+                else if (temperature < 10) temperatureIcon.setBackground(getDrawable(R.drawable.temp_blue));
+                else                       temperatureIcon.setBackground(getDrawable(R.drawable.temp_grey));
+
+                TextView txtTemperature = findViewById(R.id.temperature);
+                txtTemperature.setText(String.format(Locale.getDefault(), "%d", temperature));
+            }
+        });
+    }
+
+    void toggleSpeedControls(boolean enabled)
+    {
+        if (enabled)
+        {
+            btnAccelerate.setForeground(getDrawable(R.drawable.throttle));
+            btnBrake.setForeground(getDrawable(R.drawable.brake));
+        }
+
+        else
+        {
+            btnAccelerate.setForeground(getDrawable(R.drawable.throttle_disabled));
+            btnBrake.setForeground(getDrawable(R.drawable.brake_disabled));
+        }
+
+        btnAccelerate.setEnabled(enabled);
+        btnBrake.setEnabled(enabled);
+    }
+
+    @Override
+    public void updateChargeMode(final boolean isCharging)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                toggleSpeedControls(!isCharging);
+
+                if (isCharging) btnCharge.setBackground(getDrawable(R.drawable.charging_icon_green));
+                else            btnCharge.setBackground(getDrawable(R.drawable.charging_icon_black));
+            }
+        });
+    }
+
+    @Override
+    public void toggleParkingBrake(final int state)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                ImageButton parkingBrake = findViewById(R.id.parkingBrake);
+
+                if (state == vehicle.STATE_OFF)
+                {
+                    toggleSpeedControls(true);
+                    parkingBrake.setBackground(getDrawable(R.drawable.parking_brake_black));
+                }
+
+                else
+                {
+                    toggleSpeedControls(false);
+                    parkingBrake.setBackground(getDrawable(R.drawable.parking_brake_red));
+                }
+            }
+        });
+    }
+
+    @Override
+    public void toggleIndicator(final int state)
+    {
+        runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                Animation blink = new AlphaAnimation(1.0f, 0.0f);
+                blink.setDuration(500);
+                blink.setRepeatCount(Animation.INFINITE);
+                blink.setRepeatMode(Animation.REVERSE);
+
+                if (state == vehicle.STATE_OFF)
+                {
+                    btnLeftIndicator.setBackground(getDrawable(R.drawable.left_indicator_black));
+                    btnRightIndicator.setBackground(getDrawable(R.drawable.right_indicator_black));
+
+                    btnRightIndicator.setAnimation(null);
+                    btnLeftIndicator.setAnimation(null);
+                }
+
+                else if (state == vehicle.STATE_SIGNAL_RIGHT)
+                {
+                    btnLeftIndicator.setBackground(getDrawable(R.drawable.left_indicator_black));
+                    btnRightIndicator.setBackground(getDrawable(R.drawable.right_indicator_green));
+
+                    btnRightIndicator.setAnimation(blink);
+                    btnLeftIndicator.setAnimation(null);
+                }
+
+                else
+                {
+                    btnLeftIndicator.setBackground(getDrawable(R.drawable.left_indicator_green));
+                    btnRightIndicator.setBackground(getDrawable(R.drawable.right_indicator_black));
+
+                    btnRightIndicator.setAnimation(null);
+                    btnLeftIndicator.setAnimation(blink);
+                }
+            }
+        });
     }
 
     @Override

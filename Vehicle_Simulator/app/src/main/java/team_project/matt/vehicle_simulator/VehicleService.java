@@ -21,17 +21,18 @@ public class VehicleService implements BluetoothServerStatus
         BATTERY_LVL, RANGE, BATTERY_TEMP,
         
         // car data
-        SPEED, DISTANCE, TURN_SIGNAL, LIGHTS, HANDBRAKE,
+        SPEED, DISTANCE, TURN_SIGNAL, LIGHTS, PARKING_BRAKE,
         
         // warnings
-        SEATBELT, WIPER_LOW, TYRE_PRESSURE_LOW, AIRBAG_ERR, BRAKE_ERR, ABS_ERR, ENGIN_ERR
+        SEATBELT, WIPER_LOW, TYRE_PRESSURE_LOW, AIRBAG_ERR, BRAKE_ERR, ABS_ERR, EV_ERR
     }
     
     // property states
-    final int         STATE_OFF = 0,           STATE_ON = 1;
-    final int STATE_SIGNAL_LEFT = 1, STATE_SIGNAL_RIGHT = 2;
-    final int  STATE_LIGHTS_LOW = 1,  STATE_LIGHTS_HIGH = 2, STATE_LIGHTS_ERR = 3;
-    final int STATE_WARNING_LOW = 1, STATE_WARNING_HIGH = 2;
+    static final int         STATE_OFF = 0;
+    static final int          STATE_ON = 1;
+    static final int STATE_SIGNAL_LEFT = 1, STATE_SIGNAL_RIGHT = 2;
+    static final int  STATE_LIGHTS_LOW = 1,  STATE_LIGHTS_HIGH = 2, STATE_LIGHTS_ERR = 3;
+    static final int STATE_WARNING_LOW = 1, STATE_WARNING_HIGH = 2;
     
     class Characteristic
     {
@@ -180,7 +181,7 @@ public class VehicleService implements BluetoothServerStatus
     
         newCharacteristic = new Characteristic
                 ("f05976f6-aa9e-4d19-a255-aeda7dbb624f",
-                        Property.HANDBRAKE,
+                        Property.PARKING_BRAKE,
                         Characteristic.FORMAT_STATE);
         
         newCharacteristic.addSupportedValue(STATE_OFF);
@@ -255,7 +256,7 @@ public class VehicleService implements BluetoothServerStatus
     
         newCharacteristic = new Characteristic
                 ("d93f1c6c-6e14-44b3-95ce-d0a7f71efbb5",
-                        Property.ENGIN_ERR,
+                        Property.EV_ERR,
                         Characteristic.FORMAT_STATE);
     
         newCharacteristic.addSupportedValue(STATE_OFF);
@@ -281,27 +282,10 @@ public class VehicleService implements BluetoothServerStatus
         for (Characteristic characteristic : characteristics)
         {
             UUIDs.add(characteristic.UUID);
-            defaultValues.add(characteristic.format);
+            defaultValues.add(STATE_OFF);
         }
 
-        // does it need to send formats??
         bluetoothDevice.startGATT(UUID, UUIDs, descriptor, defaultValues);
-
-        getCharacteristic(VehicleService.Property.BATTERY_LVL).setData(100);
-        getCharacteristic(VehicleService.Property.RANGE).setData(0);                             // get from shared prefs later
-        getCharacteristic(VehicleService.Property.BATTERY_TEMP).setData(20);                     // safe temp 20-45c
-        getCharacteristic(VehicleService.Property.SPEED).setData(0);
-        getCharacteristic(VehicleService.Property.DISTANCE).setData(0);
-        getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(STATE_OFF);
-        getCharacteristic(VehicleService.Property.LIGHTS).setData(STATE_OFF);
-        getCharacteristic(VehicleService.Property.HANDBRAKE).setData(STATE_ON);
-        getCharacteristic(VehicleService.Property.SEATBELT).setData(STATE_OFF);
-        getCharacteristic(VehicleService.Property.TYRE_PRESSURE_LOW).setData(STATE_OFF);
-        getCharacteristic(VehicleService.Property.WIPER_LOW).setData(STATE_OFF);
-        getCharacteristic(VehicleService.Property.AIRBAG_ERR).setData(STATE_OFF);
-        getCharacteristic(VehicleService.Property.BRAKE_ERR).setData(STATE_OFF);
-        getCharacteristic(VehicleService.Property.ABS_ERR).setData(STATE_OFF);
-        getCharacteristic(VehicleService.Property.ENGIN_ERR).setData(STATE_OFF);
     }
 
     @Override
