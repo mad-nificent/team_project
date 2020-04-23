@@ -9,17 +9,21 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.Locale;
+import java.util.Random;
 
 public class Home extends AppCompatActivity implements BluetoothPermissions, VehicleDashboard, ActivityCompat.OnRequestPermissionsResultCallback
 {
@@ -29,14 +33,19 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
     BluetoothPermissionsResult respond;     // respond to permission request
     VehicleManager             vehicle;     // interact with vehicle
 
+    ImageButton btnOptions;
+    Button      btnStop;
+
     // UI controls
     ImageButton btnSeatbelt,    btnLightsFault,  btnTyrePressure, btnWiperFluid, btnAirbag,      btnBrakeFault, btnABS,   btnEV;    // warnings
     SeekBar     temperatureBar;
     ImageButton btnLights,      btnParkingBrake, btnCharge,       btnLeftSignal, btnRightSignal, btnAccelerate, btnBrake;           // controls
 
-    protected void onCreate(Bundle savedInstanceState)
+    boolean runScenario = false;
+
+    @Override
+    protected void onResume()
     {
-        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home_loading);
 
         // communicates with BLE, including any changes to vehicle state
@@ -54,6 +63,8 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
 
         // initiate setup of BLE, if successful, calls setupComplete()
         vehicle.setupBluetooth(bluetoothDevice);
+
+        super.onResume();
     }
 
     @Override
@@ -69,6 +80,8 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
         setContentView(R.layout.activity_home_vehicle_interface);
 
         ImageView signal = findViewById(R.id.signalIcon);
+        btnStop          = findViewById(R.id.stop);
+        btnOptions       = findViewById(R.id.options);
         btnSeatbelt      = findViewById(R.id.seatbelt);
         btnLightsFault   = findViewById(R.id.lightWarning);
         btnTyrePressure  = findViewById(R.id.lowTyrePressure);
@@ -87,6 +100,65 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
         btnAccelerate    = findViewById(R.id.throttle);
 
         signal.setForeground(getDrawable(R.drawable.connection_green));
+
+        btnStop.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                runScenario = false;
+                btnStop.setVisibility(View.INVISIBLE);
+                btnOptions.setVisibility(View.VISIBLE);
+                return true;
+            }
+        });
+
+        btnOptions.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View v, MotionEvent event)
+            {
+                if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_POINTER_DOWN)
+                {
+                    PopupMenu popupMenu = new PopupMenu(Home.this, btnOptions);
+                    popupMenu.getMenuInflater().inflate(R.menu.options, popupMenu.getMenu());
+
+                    popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener()
+                    {
+                        @Override
+                        public boolean onMenuItemClick(MenuItem item)
+                        {
+                            btnOptions.setVisibility(View.INVISIBLE);
+
+                            switch(item.getItemId())
+                            {
+                                case R.id.slowDrive:
+                                    drive(30);
+                                    break;
+
+                                case R.id.fastDrive:
+                                    drive(120);
+                                    break;
+
+                                case R.id.crash:
+                                    crash();
+                                    break;
+
+                                case R.id.outOfBattery:
+                                    drive(120, 10);
+                                    break;
+                            }
+
+                            return true;
+                        }
+                    });
+
+                    popupMenu.show();
+                }
+
+                return true;
+            }
+        });
 
         btnSeatbelt.setOnTouchListener(new View.OnTouchListener()
         {
@@ -320,6 +392,193 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
 
         btnAccelerate.setEnabled(enabled);
         btnBrake.setEnabled(enabled);
+    }
+
+    void drive(final int speed)
+    {
+        runScenario = true;
+
+        btnStop.setVisibility(View.VISIBLE);
+        btnLightsFault.setEnabled(false);
+        btnLights.setEnabled(false);
+        btnParkingBrake.setEnabled(false);
+        btnCharge.setEnabled(false);
+        btnLeftSignal.setEnabled(false);
+        btnRightSignal.setEnabled(false);
+        btnAccelerate.setEnabled(false);
+        btnBrake.setEnabled(false);
+
+        btnAccelerate.setForeground(getDrawable(R.drawable.throttle_active));
+
+        if (vehicle.isParkingBrakeEngaged()) vehicle.toggleParkingBrake();
+
+        // maintain speed
+        new Thread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                while (runScenario && vehicle.batteryLevel() > 0)
+                {
+                    vehicle.accelerate();
+
+                    while (runScenario && vehicle.batteryLevel() > 0 && vehicle.speed() <= speed);
+
+                    vehicle.decelerate();
+
+                    while (runScenario && vehicle.batteryLevel() > 0 && vehicle.speed() > speed);
+                }
+
+                runOnUiThread(new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        btnAccelerate.setForeground(getDrawable(R.drawable.throttle));
+
+                        btnLightsFault.setEnabled(true);
+                        btnLights.setEnabled(true);
+                        btnParkingBrake.setEnabled(true);
+                        btnCharge.setEnabled(true);
+                        btnLeftSignal.setEnabled(true);
+                        btnRightSignal.setEnabled(true);
+                        btnAccelerate.setEnabled(true);
+                        btnBrake.setEnabled(true);
+                    }
+                });
+            }
+
+        }).start();
+
+        // use controls
+        new Thread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                try { Thread.sleep(5000); }
+                catch (InterruptedException e) { e.printStackTrace(); }
+
+                while (runScenario && vehicle.batteryLevel() > 0)
+                {
+                    Random random = new Random();
+                    int result = random.nextInt(4);
+
+                    switch (result)
+                    {
+                        case 0:
+                            break;
+
+                        case 1:
+                            vehicle.toggleLeftIndicator();
+
+                            result = random.nextInt(10000);
+                            if (result < 2000) result = 2000;
+
+                            try { Thread.sleep(result); }
+                            catch (InterruptedException e) { e.printStackTrace(); }
+
+                            if (runScenario && vehicle.batteryLevel() > 0) vehicle.toggleLeftIndicator();
+
+                            break;
+
+                        case 2:
+                            vehicle.toggleRightIndicator();
+
+                            result = random.nextInt(10000);
+                            if (result < 2000) result = 2000;
+
+                            try { Thread.sleep(result); }
+                            catch (InterruptedException e) { e.printStackTrace(); }
+
+                            if (runScenario && vehicle.batteryLevel() > 0) vehicle.toggleRightIndicator();
+
+                            break;
+
+                        case 3:
+                            vehicle.toggleLights();
+                            if (vehicle.lightsHigh()) vehicle.toggleLights();
+                    }
+
+                    result = random.nextInt(20000);
+                    if (result < 5000) result = 5000;
+
+                    try { Thread.sleep(result); }
+                    catch (InterruptedException e) { e.printStackTrace(); }
+                }
+            }
+
+        }).start();
+    }
+
+    void crash()
+    {
+        runScenario = true;
+
+        btnStop.setVisibility(View.VISIBLE);
+        btnLightsFault.setEnabled(false);
+        btnLights.setEnabled(false);
+        btnParkingBrake.setEnabled(false);
+        btnCharge.setEnabled(false);
+        btnLeftSignal.setEnabled(false);
+        btnRightSignal.setEnabled(false);
+        btnAccelerate.setEnabled(false);
+        btnBrake.setEnabled(false);
+
+        btnAccelerate.setForeground(getDrawable(R.drawable.throttle_active));
+
+        if (vehicle.isParkingBrakeEngaged()) vehicle.toggleParkingBrake();
+
+        // maintain speed
+        new Thread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                vehicle.accelerate();
+
+                try { Thread.sleep(15000); }
+                catch (InterruptedException e) { e.printStackTrace(); }
+
+                if (runScenario)
+                {
+                    vehicle.brake();
+
+                    vehicle.toggleAirbag();
+                    vehicle.toggleBrakeFault();
+                    vehicle.toggleBrakeFault();
+                    vehicle.toggleABS();
+                    vehicle.toggleABS();
+                    vehicle.toggleEV();
+                    vehicle.toggleEV();
+                }
+
+                runOnUiThread(new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        btnAccelerate.setForeground(getDrawable(R.drawable.throttle));
+
+                        btnLightsFault.setEnabled(true);
+                        btnLights.setEnabled(true);
+                        btnParkingBrake.setEnabled(true);
+                        btnCharge.setEnabled(true);
+                        btnLeftSignal.setEnabled(true);
+                        btnRightSignal.setEnabled(true);
+                        btnAccelerate.setEnabled(true);
+                        btnBrake.setEnabled(true);
+                    }
+                });
+            }
+
+        }).start();
+    }
+
+    void drive(final int speed, int batteryLevel)
+    {
+        vehicle.setBatteryLevel(batteryLevel);
+        drive(speed);
     }
 
     // DASHBOARD INTERFACE

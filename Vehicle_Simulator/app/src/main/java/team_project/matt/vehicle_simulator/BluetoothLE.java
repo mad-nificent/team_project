@@ -248,6 +248,15 @@ class BluetoothLE implements BluetoothPermissionsResult
             isAdvertising = false;
 
             if (GATTServer != null) GATTServer.close();
+
+            bluetoothManager = null;
+            bluetoothAdapter = null;
+            GATTServer       = null;
+            service          = null;
+
+            devices.clear();
+
+            vehicleDashboard.updateDeviceCount(0);
         }
     }
 

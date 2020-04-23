@@ -237,18 +237,21 @@ class VehicleManager implements VehicleStatus
     {
         if (lights == STATE_LIGHTS_ERR) toggleLightsFault();
 
-        if      (lights == STATE_OFF)        lights = STATE_LIGHTS_LOW;
-        else if (lights == STATE_LIGHTS_LOW) lights = STATE_LIGHTS_HIGH;
-        else
+        if (battery.isOn() && battery.chargeLeft() > 0)
         {
-            lights = STATE_OFF;
-            if (!consumingPower()) battery.idle();
-        }
+            if (lights == STATE_OFF) lights = STATE_LIGHTS_LOW;
+            else if (lights == STATE_LIGHTS_LOW) lights = STATE_LIGHTS_HIGH;
+            else
+            {
+                lights = STATE_OFF;
+                if (!consumingPower()) battery.idle();
+            }
 
-        if (started)
-        {
-            vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(lights);
-            vehicleDashboard.toggleLights(lights);
+            if (started)
+            {
+                vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(lights);
+                vehicleDashboard.toggleLights(lights);
+            }
         }
     }
 
@@ -268,33 +271,39 @@ class VehicleManager implements VehicleStatus
 
     void toggleLeftIndicator()
     {
-        if (turnSignal != STATE_SIGNAL_LEFT) turnSignal = STATE_SIGNAL_LEFT;
-        else
+        if (battery.isOn() && battery.chargeLeft() > 0)
         {
-            turnSignal = STATE_OFF;
-            if (!consumingPower()) battery.idle();
-        }
+            if (turnSignal != STATE_SIGNAL_LEFT) turnSignal = STATE_SIGNAL_LEFT;
+            else
+            {
+                turnSignal = STATE_OFF;
+                if (!consumingPower()) battery.idle();
+            }
 
-        if (started)
-        {
-            vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(turnSignal);
-            vehicleDashboard.toggleTurnSignal(turnSignal);
+            if (started)
+            {
+                vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(turnSignal);
+                vehicleDashboard.toggleTurnSignal(turnSignal);
+            }
         }
     }
 
     void toggleRightIndicator()
     {
-        if (turnSignal != STATE_SIGNAL_RIGHT) turnSignal = STATE_SIGNAL_RIGHT;
-        else
+        if (battery.isOn() && battery.chargeLeft() > 0)
         {
-            turnSignal = STATE_OFF;
-            if (!consumingPower()) battery.idle();
-        }
+            if (turnSignal != STATE_SIGNAL_RIGHT) turnSignal = STATE_SIGNAL_RIGHT;
+            else
+            {
+                turnSignal = STATE_OFF;
+                if (!consumingPower()) battery.idle();
+            }
 
-        if (started)
-        {
-            vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(turnSignal);
-            vehicleDashboard.toggleTurnSignal(turnSignal);
+            if (started)
+            {
+                vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(turnSignal);
+                vehicleDashboard.toggleTurnSignal(turnSignal);
+            }
         }
     }
 
@@ -325,6 +334,13 @@ class VehicleManager implements VehicleStatus
         if (!consumingPower()) battery.idle();
         else battery.decreasePowerLevel(battery.minPowerConsumption() * motor.speed());
     }
+
+    void setBatteryLevel(int batteryLevel) { battery.setBatteryLevel(batteryLevel); }
+
+    boolean lightsHigh()            { return lights == STATE_LIGHTS_HIGH; }
+    boolean isParkingBrakeEngaged() { return parkingBrake == STATE_ON; }
+    int     speed()                 { if (started) return motor.speed(); else return 0; }
+    int     batteryLevel()          { if (started) return (int) battery.chargeLeft(); else return 0; }
 
     private void calculateRange(int speed)
     {
@@ -373,7 +389,22 @@ class VehicleManager implements VehicleStatus
             calculateRange(motor.speed());
         }
 
-        if (batteryLevel <= 0) decelerate();    // kill power to vehicle
+        // kill power to vehicle
+        if (batteryLevel <= 0)
+        {
+            decelerate();
+
+            turnSignal = STATE_OFF;
+            vehicleService.getCharacteristic(VehicleService.Property.TURN_SIGNAL).setData(turnSignal);
+            vehicleDashboard.toggleTurnSignal(turnSignal);
+
+            if (lights != STATE_LIGHTS_ERR)
+            {
+                lights = STATE_OFF;
+                vehicleService.getCharacteristic(VehicleService.Property.LIGHTS).setData(lights);
+                vehicleDashboard.toggleLights(lights);
+            }
+        }
     }
 
     @Override

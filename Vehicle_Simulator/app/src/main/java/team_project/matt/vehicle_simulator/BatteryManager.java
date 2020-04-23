@@ -177,6 +177,12 @@ class BatteryManager
         updateStatus.notifyBatteryTemperatureChanged(temperature);
     }
 
+    void setBatteryLevel(int newBatteryLevel)
+    {
+        chargeLevel = newBatteryLevel;
+        updateStatus.notifyBatteryLevelChanged((int) chargeLevel);
+    }
+
     boolean isOn()                    { return isOn; }
     double  currentPowerConsumption() { return powerLevel; }
     double  minPowerConsumption()     { return BatteryConstants.getMinPower(); }
