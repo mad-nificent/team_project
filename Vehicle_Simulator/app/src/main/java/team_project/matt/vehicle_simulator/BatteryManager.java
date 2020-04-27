@@ -119,6 +119,8 @@ class BatteryManager
         }
     }
 
+    void run() { if (state != State.RUNNING) state = State.RUNNING; }
+
     void toggleCharging()
     {
         boolean isCharging = false;

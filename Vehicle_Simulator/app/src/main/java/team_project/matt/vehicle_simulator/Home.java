@@ -36,6 +36,8 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
     ImageButton btnOptions;
     Button      btnStop;
 
+    boolean isCharging, parkingBrakeOn;
+
     // UI controls
     ImageButton btnSeatbelt,    btnLightsFault,  btnTyrePressure, btnWiperFluid, btnAirbag,      btnBrakeFault, btnABS,   btnEV;    // warnings
     SeekBar     temperatureBar;
@@ -444,8 +446,15 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
                         btnRightSignal.setEnabled(true);
                         btnAccelerate.setEnabled(true);
                         btnBrake.setEnabled(true);
+
+                        if (btnStop.getVisibility() == View.VISIBLE)
+                        {
+                            btnStop.setVisibility(View.INVISIBLE);
+                            btnOptions.setVisibility(View.VISIBLE);
+                        }
                     }
                 });
+
             }
 
         }).start();
@@ -537,8 +546,18 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
             {
                 vehicle.accelerate();
 
-                try { Thread.sleep(15000); }
-                catch (InterruptedException e) { e.printStackTrace(); }
+                int totalSleep = 20000;
+                int currentSleep = 0;
+
+                // run the scenario by waiting 20 secs before crashing
+                // every 1/4 second check the user hasnt cancelled
+                while (runScenario && currentSleep < totalSleep)
+                {
+                    currentSleep += 250;
+
+                    try { Thread.sleep(250); }
+                    catch (InterruptedException e) { e.printStackTrace(); }
+                }
 
                 if (runScenario)
                 {
@@ -552,6 +571,8 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
                     vehicle.toggleEV();
                     vehicle.toggleEV();
                 }
+
+                else vehicle.decelerate();
 
                 runOnUiThread(new Runnable()
                 {
@@ -568,8 +589,15 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
                         btnRightSignal.setEnabled(true);
                         btnAccelerate.setEnabled(true);
                         btnBrake.setEnabled(true);
+
+                        if (btnStop.getVisibility() == View.VISIBLE)
+                        {
+                            btnStop.setVisibility(View.INVISIBLE);
+                            btnOptions.setVisibility(View.VISIBLE);
+                        }
                     }
                 });
+
             }
 
         }).start();
@@ -854,15 +882,24 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
     @Override
     public void toggleChargeMode(final boolean isCharging)
     {
+        this.isCharging = isCharging;
+
         runOnUiThread(new Runnable()
         {
             @Override
             public void run()
             {
-                toggleSpeedControls(!isCharging);
+                if (isCharging)
+                {
+                    toggleSpeedControls(false);
+                    btnCharge.setForeground(getDrawable(R.drawable.charging_icon_green));
+                }
 
-                if (isCharging) btnCharge.setForeground(getDrawable(R.drawable.charging_icon_green));
-                else            btnCharge.setForeground(getDrawable(R.drawable.charging_icon_black));
+                else
+                {
+                    if (!parkingBrakeOn) toggleSpeedControls(true);
+                    btnCharge.setForeground(getDrawable(R.drawable.charging_icon_black));
+                }
             }
         });
     }
@@ -870,6 +907,8 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
     @Override
     public void toggleParkingBrake(final int newState)
     {
+        parkingBrakeOn = newState == vehicle.STATE_ON;
+
         runOnUiThread(new Runnable()
         {
             @Override
@@ -877,7 +916,7 @@ public class Home extends AppCompatActivity implements BluetoothPermissions, Veh
             {
                 if (newState == vehicle.STATE_OFF)
                 {
-                    toggleSpeedControls(true);
+                    if (!isCharging) toggleSpeedControls(true);
                     btnParkingBrake.setForeground(getDrawable(R.drawable.parking_brake_black));
                 }
 

@@ -237,10 +237,20 @@ class VehicleManager implements VehicleStatus
     {
         if (lights == STATE_LIGHTS_ERR) toggleLightsFault();
 
-        if (battery.isOn() && battery.chargeLeft() > 0)
+        if (battery.isOn() && (int) battery.chargeLeft() > 0)
         {
-            if (lights == STATE_OFF) lights = STATE_LIGHTS_LOW;
-            else if (lights == STATE_LIGHTS_LOW) lights = STATE_LIGHTS_HIGH;
+            if (lights == STATE_OFF)
+            {
+                if (!consumingPower()) battery.run();
+                lights = STATE_LIGHTS_LOW;
+            }
+
+            else if (lights == STATE_LIGHTS_LOW)
+            {
+                if (!consumingPower()) battery.run();
+                lights = STATE_LIGHTS_HIGH;
+            }
+
             else
             {
                 lights = STATE_OFF;
@@ -271,7 +281,7 @@ class VehicleManager implements VehicleStatus
 
     void toggleLeftIndicator()
     {
-        if (battery.isOn() && battery.chargeLeft() > 0)
+        if (battery.isOn() && (int) battery.chargeLeft() > 0)
         {
             if (turnSignal != STATE_SIGNAL_LEFT) turnSignal = STATE_SIGNAL_LEFT;
             else
@@ -290,7 +300,7 @@ class VehicleManager implements VehicleStatus
 
     void toggleRightIndicator()
     {
-        if (battery.isOn() && battery.chargeLeft() > 0)
+        if (battery.isOn() && (int) battery.chargeLeft() > 0)
         {
             if (turnSignal != STATE_SIGNAL_RIGHT) turnSignal = STATE_SIGNAL_RIGHT;
             else
@@ -310,9 +320,11 @@ class VehicleManager implements VehicleStatus
     void accelerate()
     {
         // need power and brake disengaged
-        if (battery.isOn() && battery.chargeLeft() > 0 && parkingBrake == STATE_OFF)
+        if (battery.isOn() && (int) battery.chargeLeft() > 0 && parkingBrake == STATE_OFF)
         {
             motor.accelerate();
+
+            if (!consumingPower()) battery.run();
 
             // not cold start, adjust battery consumption to match current speed
             if (motor.speed() > 1) battery.increasePowerLevel(battery.minPowerConsumption() * motor.speed());
@@ -366,9 +378,8 @@ class VehicleManager implements VehicleStatus
     {
         boolean consumingPower = false;
 
-        if      (motor.state() == SpeedManager.State.ACCELERATING)                       consumingPower = true;
-        else if        (lights == STATE_LIGHTS_LOW  || lights     == STATE_LIGHTS_HIGH)  consumingPower = true;
-        else if    (turnSignal == STATE_SIGNAL_LEFT || turnSignal == STATE_SIGNAL_RIGHT) consumingPower = true;
+        if      (motor.state() == SpeedManager.State.ACCELERATING)            consumingPower = true;
+        else if (lights == STATE_LIGHTS_LOW  || lights == STATE_LIGHTS_HIGH)  consumingPower = true;
 
         return consumingPower;
     }
