@@ -26,7 +26,8 @@ public class Start extends AppCompatActivity implements View.OnTouchListener
     {
         if (event.getAction() == MotionEvent.ACTION_DOWN)
         {
-            Intent intent = new Intent(this, Home.class);
+            // launch vehicle interface
+            Intent intent = new Intent(this, VehicleInterface.class);
             startActivity(intent);
         }
 
