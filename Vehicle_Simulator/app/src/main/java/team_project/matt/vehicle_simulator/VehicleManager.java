@@ -410,10 +410,10 @@ class VehicleManager implements VehicleStatus
         {
             calculateRange(engine.speed());
 
-            engine.accelerate();
-
             // run the battery if it was idle
             if (!usingBattery()) battery.run();
+
+            engine.accelerate();
 
             // not cold start, adjust battery consumption to match current speed
             if (engine.speed() > 1) battery.increasePowerLevel(battery.minPowerConsumption() * engine.speed());
