@@ -1,0 +1,42 @@
+<resources>
+
+    <string name="app_name">Vehicle Simulator</string>
+
+    <string name=    "slow_drive">Slow Drive</string>
+    <string name=    "fast_drive">Fast Drive</string>
+    <string name=         "crash">Crash</string>
+    <string name="out_of_battery">Out of Battery</string>
+
+    <string name="device_count_placholder">0</string>
+    <string name=                "devices">devices</string>
+    <string name=                   "stop">Stop</string>
+    <string name=    "battery_placeholder">0</string>
+    <string name=                "percent">%</string>
+    <string name=      "speed_placeholder">0</string>
+    <string name=                    "mph">MPH</string>
+    <string name=      "range_placeholder">0</string>
+    <string name=             "miles_left">Miles Left</string>
+    <string name=   "distance_placeholder">0</string>
+    <string name=        "miles_travelled">Miles Travelled</string>
+    <string name="temperature_placeholder">0</string>
+    <string name=                "degrees">°C</string>
+
+    <!-- SHARED PREF DATA -->
+    <string name=         "filename">vehicle_data</string>
+    <string name=     "seatbelt_key">seatbelt</string>
+    <string name=  "wiper_fluid_key">wiper_fluid</string>
+    <string name="tyre_pressure_key">tyre_pressure</string>
+    <string name=       "airbag_key">airbag</string>
+    <string name=        "brake_key">brake</string>
+    <string name=          "abs_key">abs</string>
+    <string name=           "ev_key">ev</string>
+
+    <string name="battery_level_key">battery_level</string>
+    <string name=  "temperature_key">temperature</string>
+    <string name=     "distance_key">distance</string>
+    <string name=       "lights_key">lights</string>
+    <string name="parking_brake_key">parking_brake</string>
+    <string name=     "charging_key">charging</string>
+    <string name=  "turn_signal_key">turn_signal</string>
+
+</resources>
